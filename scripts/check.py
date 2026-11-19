@@ -102,6 +102,7 @@ def main() -> int:
 
     # 2. свипы -------------------------------------------------------------- #
     seeds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1911]
+    four = ["duplicate_entry", "period_cutoff", "partial_allocation", "fx_rate"]
     print("\n2) Свип по эпизодам (13 seed'ов x конфигурации)")
     sweep_config("чистые (clean)", {"n_invoices": 12, "clean": True, "n_issues": 0}, seeds)
     sweep_config("одиночные (1 тип)", {"n_invoices": 12, "n_issues": 1}, seeds)
@@ -109,10 +110,13 @@ def main() -> int:
                                      "issue_types": ["duplicate_entry", "period_cutoff"],
                                      "n_issues": 2}, seeds)
     sweep_config("четыре типа в одном эпизоде",
-                 {"n_invoices": 25,
-                  "issue_types": ["duplicate_entry", "period_cutoff",
-                                  "partial_allocation", "fx_rate"],
-                  "n_issues": 4}, seeds)
+                 {"n_invoices": 25, "issue_types": four, "n_issues": 4}, seeds)
+    sweep_config("сценарии S1+S2 (взаимодействие)",
+                 {"n_invoices": 30, "issue_types": [], "n_issues": 0,
+                  "scenarios": ["S1", "S2"]}, seeds)
+    sweep_config("одиночные + сценарии (6 ошибок)",
+                 {"n_invoices": 40, "issue_types": four, "n_issues": 4,
+                  "scenarios": ["S1", "S2"]}, seeds)
 
     # 3. атаки -------------------------------------------------------------- #
     print("\n3) Атакующие политики")

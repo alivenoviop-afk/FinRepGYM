@@ -266,38 +266,56 @@ class ReconciliationPolicy(BasePolicy):
                 continue
             doc_inside = period[0] <= pay["timestamp"] <= period[1]
             rows_outside = [r for r in pay_rows if not (period[0] <= r["timestamp"] <= period[1])]
+            # cutoff: строки вне периода при документе внутри. НЕ прерываем цикл —
+            # суммы проверяются ТОЖЕ: вторая ошибка сценария живёт в сумме, а не во времени.
             if doc_inside and rows_outside:
-                ar_row = next((r for r in pay_rows if r["account"].startswith("1200")),
+                ev_row = next((r for r in pay_rows if r["account"].startswith("1200")),
                               pay_rows[0])
                 findings.append({
                     "type": "period_cutoff",
                     "affected_ids": sorted([pay["payment_id"]] + [r["row_id"] for r in pay_rows]),
                     "claimed_amount_minor": int(pay["amount_minor"]),
                     "currency": pay["currency"],
-                    "evidence_ids": [f"payment:{pay['payment_id']}", f"ledger:{ar_row['row_id']}",
+                    "evidence_ids": [f"payment:{pay['payment_id']}", f"ledger:{ev_row['row_id']}",
                                      "policy:period"],
                     "explanation": f"платёж {pay['payment_id']} внутри периода, "
                                    f"строки леджера — вне периода",
                 })
-                continue
 
             ar_row = next((r for r in pay_rows if r["account"].startswith("1200")), None)
             cash_row = next((r for r in pay_rows if r["account"].startswith("1010")), None)
             if ar_row is None or cash_row is None:
                 continue
 
-            # (c) кросс-валютный платёж: документ в чужой валюте, постинг в базовой
+            # кросс-валютный платёж: документ в чужой валюте, постинг в базовой
             if ar_row["currency"] != pay["currency"]:
                 expected = convert(pay["amount_minor"], pay["currency"], ar_row["currency"])
                 if expected is None:
                     continue
-                actual = int(ar_row["credit_minor"])
-                if actual != expected:
+                cash_val = int(cash_row["debit_minor"])
+                ar_val = int(ar_row["credit_minor"])
+                if cash_val != expected:
+                    # обе строки уменьшены при полном документе -> частичное распределение
+                    findings.append({
+                        "type": "partial_allocation",
+                        "affected_ids": sorted([pay["payment_id"], cash_row["row_id"],
+                                                ar_row["row_id"]]),
+                        "claimed_amount_minor": abs(expected - cash_val),
+                        "currency": ar_row["currency"],
+                        "evidence_ids": [f"payment:{pay['payment_id']}",
+                                         f"ledger:{ar_row['row_id']}",
+                                         f"invoice:{ar_row['invoice_id']}"],
+                        "explanation": f"платёж {pay['payment_id']} ({pay['currency']}) "
+                                       f"распределён на {cash_val} {ar_row['currency']} "
+                                       f"при эквиваленте {expected}",
+                    })
+                elif ar_val != expected:
+                    # касса сходится с policy-курсом, AR пересчитана по чужой дате
                     findings.append({
                         "type": "fx_rate",
                         "affected_ids": sorted([pay["payment_id"], cash_row["row_id"],
                                                 ar_row["row_id"]]),
-                        "claimed_amount_minor": abs(actual - expected),
+                        "claimed_amount_minor": abs(ar_val - expected),
                         "currency": ar_row["currency"],
                         "evidence_ids": [f"payment:{pay['payment_id']}",
                                          f"ledger:{ar_row['row_id']}",
@@ -305,7 +323,7 @@ class ReconciliationPolicy(BasePolicy):
                                          "policy:fx_rate_date"],
                         "explanation": f"платёж {pay['payment_id']} ({pay['currency']}) "
                                        f"конвертирован в {ar_row['currency']}: по policy-курсу "
-                                       f"ожидалось {expected}, в журнале {actual}",
+                                       f"ожидалось {expected}, в журнале {ar_val}",
                     })
                 continue
 

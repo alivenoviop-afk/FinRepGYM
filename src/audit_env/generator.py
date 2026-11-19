@@ -83,6 +83,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "period_end": "2026-03-31",
     "issue_types": ["duplicate_entry", "period_cutoff"],
     "n_issues": 2,
+    "scenarios": [],          # ["S1"] / ["S2"] / ["S1","S2"]: сценарии взаимодействия
     "clean": False,
     "distractors": True,
 }
@@ -362,7 +363,11 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         cross = bool(cfg["distractors"]) and (cross_made == 0 or rng.random() < CROSS_CCY_RATE)
         if cross:
             cross_made += 1
-            pay_ccy = rng.choice([c for c in currencies if c != inv["currency"]])
+            others = [c for c in currencies if c != inv["currency"]]
+            # предпочитаем НЕ-базовую валюту: тогда постинг реально конвертируется,
+            # и для типа fx_rate / сценариев всегда есть кандидат (иначе курс не применяется)
+            foreign = [c for c in others if c != base]
+            pay_ccy = rng.choice(foreign or others)
         else:
             pay_ccy = inv["currency"]
 
@@ -431,8 +436,24 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
             raise EpisodeError(f"issue type not implemented: {kind}")
         truth.append(issue)
         mutations.append(mutation)
-        provenance_stages.append({"stage": "mutation", "issue_id": issue["issue_id"],
-                                  "type": kind, "causal_change": mutation["causal_change"]})
+
+    # ---- сценарии взаимодействия (спека: два обязательных) ---------------- #
+    for scen in (s for s in (cfg.get("scenarios") or []) if s in ("S1", "S2")):
+        if scen == "S1":
+            issues, muts, pay_id = _inject_scenario_s1(rng, ledger, payments,
+                                                        period_start, period_end,
+                                                        used_payments, fx, policy_day, base)
+        else:
+            issues, muts, pay_id = _inject_scenario_s2(rng, ledger, payments,
+                                                        period_start, period_end,
+                                                        used_payments, fx, policy_day, base)
+        used_payments.add(pay_id)
+        truth.extend(issues)
+        mutations.extend(muts)
+        for issue, mutation in zip(issues, muts):
+            provenance_stages.append({"stage": "mutation", "issue_id": issue["issue_id"],
+                                      "type": issue["type"], "scenario": scen,
+                                      "causal_change": mutation["causal_change"]})
 
     after = _invariants(ledger, invoices, payments, period_start, period_end, fx, base)
     discrepancies = _verify_declared(before, after, mutations)
@@ -755,6 +776,207 @@ def _inject_fx_rate(rng: random.Random, ledger: list[dict], payments: list[dict]
         "affected_ids": issue["affected_ids"],
     }
     return issue, mutation
+
+
+# --------------------------------------------------------------------------- #
+# Сценарии взаимодействия (спека 02): две ошибки на ОДНОМ кросс-валютном
+# платеже у границы периода. Обе ошибки делят одни записи (общие affected_ids),
+# поэтому наивный детектор «только даты» или «только суммы» обязан терять вторую.
+# --------------------------------------------------------------------------- #
+def _cross_candidates(ledger: list[dict], payments: list[dict], period_start: datetime,
+                      period_end: datetime, exclude: set[str] | None, fx: FxTable,
+                      policy_day: date, base: str) -> list[tuple]:
+    by_payment: dict[str, list[dict]] = {}
+    for row in ledger:
+        if row["payment_id"] and row["payment_id"] != NULL_TOKEN:
+            by_payment.setdefault(row["payment_id"], []).append(row)
+    out = []
+    for pay in payments:
+        if pay["payment_id"] in (exclude or set()):
+            continue
+        rows = by_payment.get(pay["payment_id"], [])
+        if len(rows) != 2 or pay["currency"] == base:
+            continue
+        ar = next((r for r in rows if r["account"] == AR), None)
+        cash = next((r for r in rows if r["account"] == CASH), None)
+        if ar is None or cash is None or ar["currency"] != base:
+            continue
+        ts = datetime.fromisoformat(pay["timestamp"])
+        if not (period_start < ts <= period_end):
+            continue
+        correct = fx.convert(int(pay["amount_minor"]), pay["currency"], base, policy_day)
+        if int(cash["debit_minor"]) != correct or int(ar["credit_minor"]) != correct:
+            continue  # платеж уже мутирован другим типом
+        out.append((pay, rows, cash, ar, ts))
+    # ближе к границе периода — в приоритете; подстраховка: любой подходящий
+    out.sort(key=lambda t: abs((period_end - t[4]).total_seconds()))
+    return out[:3]
+
+
+def _wrong_amount(rng: random.Random, fx: FxTable, amount_minor: int, src: str, base: str,
+                  policy_day: date, correct: int) -> tuple[int, date]:
+    """Сумма по курсу чужой даты (или явное отклонение, если котировки совпали)."""
+    other = [d for d in fx.dates if d != policy_day]
+    rng.shuffle(other)
+    for day in other:
+        candidate = fx.convert(amount_minor, src, base, day)
+        if candidate != correct:
+            return candidate, day
+    return correct + max(1, correct // 200), other[0]
+
+
+def _cutoff_issue(pay: dict, rows: list[dict], issue_id: str) -> dict:
+    ar_row = next(r for r in rows if r["account"] == AR)
+    other = next(r for r in rows if r is not ar_row)
+    return {
+        "issue_id": issue_id,
+        "type": "period_cutoff",
+        "affected_ids": sorted([pay["payment_id"], ar_row["row_id"], other["row_id"]]),
+        "expected_amount_minor": int(pay["amount_minor"]),
+        "currency": pay["currency"],
+        "amount_tolerance_minor": 0,
+        "evidence_sets": [
+            [f"payment:{pay['payment_id']}", f"ledger:{ar_row['row_id']}", "policy:period"],
+            [f"payment:{pay['payment_id']}", f"ledger:{other['row_id']}",
+             f"ledger:{ar_row['row_id']}", "policy:period"],
+        ],
+        "statement": f"строки платежа {pay['payment_id']} отнесены к периоду после "
+                     f"period_end при документе с настоящей датой",
+    }
+
+
+def _inject_scenario_s1(rng: random.Random, ledger: list[dict], payments: list[dict],
+                        period_start: datetime, period_end: datetime, exclude: set[str] | None,
+                        fx: FxTable, policy_day: date, base: str) -> tuple[list, list, str]:
+    """S1 «курс + граница»: fx_rate (деньги) И period_cutoff (время) на одном платеже.
+
+    Поля не пересекаются: fx меняет сумму AR-строки, cutoff — только метки времени.
+    """
+    cand = _cross_candidates(ledger, payments, period_start, period_end, exclude,
+                             fx, policy_day, base)
+    if not cand:
+        raise EpisodeError("S1: no eligible cross-currency payment near period boundary")
+    pay, rows, cash, ar, ts = cand[rng.randrange(len(cand))]
+    pid = pay["payment_id"]
+
+    # (1) fx_rate: конвертированная AR-строка посчитана по курсу чужой даты
+    correct = int(ar["credit_minor"])
+    wrong, used_day = _wrong_amount(rng, fx, int(pay["amount_minor"]), pay["currency"],
+                                    base, policy_day, correct)
+    delta = wrong - correct
+    ar["credit_minor"] = wrong
+    fx_issue = {
+        "issue_id": "iss_s1_fx_0001",
+        "type": "fx_rate",
+        "affected_ids": sorted([pid, cash["row_id"], ar["row_id"]]),
+        "expected_amount_minor": abs(delta),
+        "currency": base,
+        "amount_tolerance_minor": 0,
+        "evidence_sets": [
+            [f"payment:{pid}", f"ledger:{ar['row_id']}",
+             f"fx:{policy_day.isoformat()}:{pay['currency']}:{base}", "policy:fx_rate_date"],
+            [f"payment:{pid}", f"ledger:{cash['row_id']}", f"ledger:{ar['row_id']}",
+             "policy:fx_rate_date"],
+        ],
+        "statement": f"S1: платёж {pid} ({pay['currency']}) у границы периода конвертирован "
+                     f"по курсу на {used_day.isoformat()} вместо {policy_day.isoformat()}: "
+                     f"расхождение {abs(delta)} {base}",
+    }
+    fx_mut = {
+        "issue_id": fx_issue["issue_id"], "type": "fx_rate",
+        "causal_change": f"scenario S1: AR row {ar['row_id']} of payment {pid} recomputed "
+                         f"with rate of {used_day.isoformat()} instead of policy date "
+                         f"{policy_day.isoformat()}",
+        "before": {"ar_credit_minor": correct, "rate_date": policy_day.isoformat()},
+        "after": {"ar_credit_minor": wrong, "rate_date": used_day.isoformat()},
+        "expected_amount_minor": abs(delta), "currency": base,
+        "effect_imbalance": -delta, "effect_ar_diff": -delta,
+        "affected_ids": fx_issue["affected_ids"],
+    }
+
+    # (2) period_cutoff: строки переезжают за period_end, документ остаётся внутри
+    new_ts = period_end + timedelta(days=1, hours=12)
+    for row in rows:
+        row["timestamp"] = _iso(new_ts)
+    cutoff_issue = _cutoff_issue(pay, rows, "iss_s1_cutoff_0001")
+    ar_current = int(ar["credit_minor"])  # строка уже в базовой валюте
+    cutoff_mut = {
+        "issue_id": cutoff_issue["issue_id"], "type": "period_cutoff",
+        "causal_change": f"scenario S1: rows of payment {pid} re-dated from {ts.isoformat()} "
+                         f"to {_iso(new_ts)}; document unchanged",
+        "before": {"rows_timestamp": ts.isoformat()},
+        "after": {"rows_timestamp": _iso(new_ts)},
+        "expected_amount_minor": int(pay["amount_minor"]), "currency": pay["currency"],
+        "effect_imbalance": 0, "effect_ar_diff": ar_current,
+        "affected_ids": cutoff_issue["affected_ids"],
+    }
+    return [fx_issue, cutoff_issue], [fx_mut, cutoff_mut], pid
+
+
+def _inject_scenario_s2(rng: random.Random, ledger: list[dict], payments: list[dict],
+                        period_start: datetime, period_end: datetime, exclude: set[str] | None,
+                        fx: FxTable, policy_day: date, base: str) -> tuple[list, list, str]:
+    """S2 «частичный платёж в другой валюте на границе периода» (пример спеки):
+    partial_allocation (деньги) И period_cutoff (время) на одном кросс-валютном платеже.
+
+    Наивный детектор, сравнивающий документ и журнал БЕЗ конвертации, получает
+    ложную дельту; детектор, остановившийся на cutoff, теряет частичное распределение.
+    """
+    cand = _cross_candidates(ledger, payments, period_start, period_end, exclude,
+                             fx, policy_day, base)
+    if not cand:
+        raise EpisodeError("S2: no eligible cross-currency payment near period boundary")
+    pay, rows, cash, ar, ts = cand[rng.randrange(len(cand))]
+    pid = pay["payment_id"]
+
+    # (1) partial_allocation: документ полон, обе строки журнала уменьшены
+    cash_base = int(cash["debit_minor"])
+    delta = min(max(1, cash_base * rng.randrange(10, 45) // 100), cash_base - 1)
+    cash["debit_minor"] = cash_base - delta
+    ar["credit_minor"] = int(ar["credit_minor"]) - delta
+    partial_issue = {
+        "issue_id": "iss_s2_partial_0001",
+        "type": "partial_allocation",
+        "affected_ids": sorted([pid, cash["row_id"], ar["row_id"]]),
+        "expected_amount_minor": delta,
+        "currency": base,
+        "amount_tolerance_minor": 0,
+        "evidence_sets": [
+            [f"payment:{pid}", f"ledger:{ar['row_id']}", f"invoice:{ar['invoice_id']}"],
+            [f"payment:{pid}", f"ledger:{cash['row_id']}", f"ledger:{ar['row_id']}"],
+        ],
+        "statement": f"S2: платёж {pid} ({pay['currency']}) распределён в журнале на "
+                     f"{cash_base - delta} {base} при документе, эквивалент {cash_base} {base}: "
+                     f"недостаёт {delta}",
+    }
+    partial_mut = {
+        "issue_id": partial_issue["issue_id"], "type": "partial_allocation",
+        "causal_change": f"scenario S2: both ledger rows of payment {pid} reduced by {delta} "
+                         f"{base} while the document keeps its full amount",
+        "before": {"ledger_allocated_minor": cash_base},
+        "after": {"ledger_allocated_minor": cash_base - delta},
+        "expected_amount_minor": delta, "currency": base,
+        "effect_imbalance": 0, "effect_ar_diff": delta,
+        "affected_ids": partial_issue["affected_ids"],
+    }
+
+    # (2) period_cutoff: те же строки переезжают за границу периода
+    new_ts = period_end + timedelta(days=1, hours=12)
+    for row in rows:
+        row["timestamp"] = _iso(new_ts)
+    cutoff_issue = _cutoff_issue(pay, rows, "iss_s2_cutoff_0001")
+    ar_current = int(ar["credit_minor"])
+    cutoff_mut = {
+        "issue_id": cutoff_issue["issue_id"], "type": "period_cutoff",
+        "causal_change": f"scenario S2: rows of payment {pid} re-dated from {ts.isoformat()} "
+                         f"to {_iso(new_ts)} after partial allocation; document unchanged",
+        "before": {"rows_timestamp": ts.isoformat()},
+        "after": {"rows_timestamp": _iso(new_ts)},
+        "expected_amount_minor": int(pay["amount_minor"]), "currency": pay["currency"],
+        "effect_imbalance": 0, "effect_ar_diff": ar_current,
+        "affected_ids": cutoff_issue["affected_ids"],
+    }
+    return [partial_issue, cutoff_issue], [partial_mut, cutoff_mut], pid
 
 
 # --------------------------------------------------------------------------- #
