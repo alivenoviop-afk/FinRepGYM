@@ -1,0 +1,24 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Официальная проверка требует Python 3.11 — гоняем именно его
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Внешних зависимостей нет: только стандартная библиотека, pip не нужен
+      - name: Юнит-тесты (контракт, данные, награда, атаки, пермутации)
+        run: python -m unittest discover -s tests -v
+
+      # Единая команда проверки: свипы, атаки, детерминизм, утечки, парные проверки
+      - name: Единая команда проверки
+        run: python scripts/check.py
