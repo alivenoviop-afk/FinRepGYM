@@ -16,6 +16,7 @@
 ## Запуск одной командой
 
 ```bash
+python scripts/demo_all.py              # ДЕМО ДЛЯ ЖЮРИ: весь прогон с репликами (~20 с)
 python scripts/build_episodes.py        # 10 train + 10 dev эпизодов + реестр
 python scripts/build_trajectories.py    # trajectories.jsonl + docs/DIAGNOSTICS.md
 python scripts/check.py                 # единая проверка жюри: 30/30
