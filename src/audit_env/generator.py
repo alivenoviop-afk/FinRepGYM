@@ -14,12 +14,17 @@ Pipeline, in this exact order:
 
 The agent never sees ``truth.json``, ``provenance.json`` or the seed.
 
-Implemented issue types (2 of the required 4 — see README):
+Implemented issue types (3 of the required 4 — see docs/RULES.md):
 
 * ``duplicate_entry``     — one side of a balanced pair is duplicated, so the
   books stop balancing by exactly the duplicated amount.
 * ``period_cutoff``       — both rows of a payment are moved across the period
   boundary, so the in-period AR balance no longer agrees with the documents.
+* ``partial_allocation``  — the payment document keeps its full amount while
+  both ledger rows are reduced, so the in-period AR balance is inflated by the
+  missing part.
+
+``fx_rate`` is added on 20.11 (multi-currency conversion).
 
 Distractors generated on purpose: split payments (legal), repeated identical
 invoice amounts (legal), unpaid invoices (legal), invoices issued near the
@@ -40,6 +45,13 @@ from typing import Any
 SCHEMA_VERSION = "audit-rl/1.0"
 
 ISSUE_TYPES = ("duplicate_entry", "partial_allocation", "fx_rate", "period_cutoff")
+
+# Реализовано в этой версии; fx_rate добавляется 20.11 (см. docs/RULES.md)
+IMPLEMENTED_TYPES = ("duplicate_entry", "period_cutoff", "partial_allocation")
+
+# Доля оплаченных счетов, к которым добавляется законный возврат (обязательный
+# отвлекающий случай из спеки). Возврат — пара строк, дебиторку не затрагивает.
+RETURNS_RATE = 0.18
 
 CASH = "1010_cash"
 AR = "1200_accounts_receivable"
@@ -144,7 +156,8 @@ def _verify_declared(before: dict, after: dict, mutations: list[dict]) -> dict[s
 
     * ``sum(debit) - sum(credit)`` must equal the total of injected duplicates;
     * in-period AR balance minus ``invoiced - paid`` must equal the total of
-      injected period-cutoff amounts;
+      injected period-cutoff amounts **plus** injected partial allocations
+      (both inflate the in-period AR balance);
     * a clean episode must satisfy both with zero.
     """
     imbalance = after["sum_debits"] - after["sum_credits"]
@@ -154,14 +167,18 @@ def _verify_declared(before: dict, after: dict, mutations: list[dict]) -> dict[s
                     if m["type"] == "duplicate_entry")
     cutoff_total = sum(int(m["expected_amount_minor"]) for m in mutations
                        if m["type"] == "period_cutoff")
+    partial_total = sum(int(m["expected_amount_minor"]) for m in mutations
+                        if m["type"] == "partial_allocation")
 
     problems = []
     # duplicated credit row -> sum(debit) - sum(credit) is negative by that amount
     if imbalance != -dup_total:
         problems.append(f"books imbalance {imbalance} != -declared duplicates {-dup_total}")
-    # a duplicated revenue row does not touch AR; a re-dated payment credit does
-    if ar_diff != cutoff_total:
-        problems.append(f"AR discrepancy {ar_diff} != declared cutoffs {cutoff_total}")
+    # duplicate does not touch AR; cutoff removes an AR credit from the period;
+    # partial allocation shrinks an AR credit inside the period
+    if ar_diff != cutoff_total + partial_total:
+        problems.append(f"AR discrepancy {ar_diff} != declared cutoffs {cutoff_total} "
+                        f"+ partials {partial_total}")
     if problems:
         raise EpisodeError("declared discrepancy does not match records: " + "; ".join(problems))
 
@@ -170,6 +187,7 @@ def _verify_declared(before: dict, after: dict, mutations: list[dict]) -> dict[s
         "declared_duplicate_total": dup_total,
         "ar_period_discrepancy": ar_diff,
         "declared_period_cutoff_total": cutoff_total,
+        "declared_partial_allocation_total": partial_total,
         "verified": True,
     }
 
@@ -187,8 +205,7 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         issue_types: list[str] = []
         n_issues = 0
     else:
-        issue_types = [t for t in cfg["issue_types"] if t in ISSUE_TYPES][:]  # validated below
-        issue_types = [t for t in issue_types if t in ("duplicate_entry", "period_cutoff")]
+        issue_types = [t for t in cfg["issue_types"] if t in IMPLEMENTED_TYPES]
         n_issues = min(int(cfg["n_issues"]), len(issue_types))
     if n_issues and not issue_types:
         raise EpisodeError("no implemented issue type requested")
@@ -259,6 +276,7 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         add_row(issued, REVENUE, 0, amount, entity, inv_id, None)
 
     pay_no = 0
+    returns_made = 0
     for inv in invoices:
         r = rng.random()
         if r < 0.25:
@@ -287,6 +305,19 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
             add_row(pay_dt, CASH, share, 0, entity, inv["invoice_id"], pay_id)
             add_row(pay_dt, AR, 0, share, entity, inv["invoice_id"], pay_id)
 
+        # Законный возврат: пара строк (дебет выручки / кредит кассы).
+        # Баланс книг сохраняется, дебиторка не затрагивается, truth не попадает.
+        # Первый оплаченный счёт получает возврат гарантированно: спека требует
+        # возвраты как обязательный отвлекающий случай.
+        if cfg["distractors"] and (returns_made == 0 or rng.random() < RETURNS_RATE):
+            returns_made += 1
+            refund = max(1, int(total * rng.randrange(15, 50) / 100))
+            refund_dt = pay_dt + timedelta(days=rng.randrange(1, 10))
+            if refund_dt > period_end:
+                refund_dt = period_end - timedelta(minutes=rng.randrange(1, 30))
+            add_row(refund_dt, REVENUE, refund, 0, inv["entity_id"], inv["invoice_id"], None)
+            add_row(refund_dt, CASH, 0, refund, inv["entity_id"], inv["invoice_id"], None)
+
     # ---- verify the clean history --------------------------------------- #
     before = _invariants(ledger, invoices, payments, period_start, period_end)
     if not before["books_balanced"] or not before["ar_matches_documents"]:
@@ -303,11 +334,19 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
 
     if n_issues:
         chosen = issue_types[:n_issues]
+        used_payments: set[str] = set()
         for kind in chosen:
             if kind == "duplicate_entry":
                 issue, mutation = _inject_duplicate(rng, ledger, invoices)
             elif kind == "period_cutoff":
-                issue, mutation = _inject_period_cutoff(rng, ledger, payments, period_start, period_end)
+                issue, mutation = _inject_period_cutoff(rng, ledger, payments,
+                                                        period_start, period_end, used_payments)
+                used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+            elif kind == "partial_allocation":
+                issue, mutation = _inject_partial_allocation(rng, ledger, payments,
+                                                             period_start, period_end,
+                                                             used_payments)
+                used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
             else:  # pragma: no cover - guarded above
                 raise EpisodeError(f"issue type not implemented: {kind}")
             truth.append(issue)
@@ -424,7 +463,8 @@ def _inject_duplicate(rng: random.Random, ledger: list[dict],
 
 
 def _inject_period_cutoff(rng: random.Random, ledger: list[dict], payments: list[dict],
-                          period_start: datetime, period_end: datetime) -> tuple[dict, dict]:
+                          period_start: datetime, period_end: datetime,
+                          exclude: set[str] | None = None) -> tuple[dict, dict]:
     """Re-date the *ledger rows* of one in-period payment across period_end.
 
     The payment document keeps its true timestamp, so documents and ledger
@@ -441,7 +481,8 @@ def _inject_period_cutoff(rng: random.Random, ledger: list[dict], payments: list
     for pay in payments:
         rows = by_payment.get(pay["payment_id"], [])
         ts = datetime.fromisoformat(pay["timestamp"])
-        if len(rows) == 2 and period_start < ts < period_end - timedelta(days=2):
+        if (len(rows) == 2 and pay["payment_id"] not in (exclude or set())
+                and period_start < ts < period_end - timedelta(days=2)):
             eligible.append((pay, rows))
     if not eligible:
         raise EpisodeError("no eligible payment for period_cutoff")
@@ -479,6 +520,78 @@ def _inject_period_cutoff(rng: random.Random, ledger: list[dict], payments: list
         "before": {"rows_timestamp": old_ts, "payment_document_timestamp": old_ts},
         "after": {"rows_timestamp": _iso(new_ts), "payment_document_timestamp": old_ts},
         "expected_amount_minor": amount,
+        "affected_ids": issue["affected_ids"],
+    }
+    return issue, mutation
+
+
+# --------------------------------------------------------------------------- #
+# partial allocation: пропущенное/частичное распределение платежа
+# --------------------------------------------------------------------------- #
+def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments: list[dict],
+                               period_start: datetime, period_end: datetime,
+                               exclude: set[str] | None = None) -> tuple[dict, dict]:
+    """Документ платежа остаётся с полной суммой, обе строки журнала уменьшены.
+
+    Книги остаются сбалансированными (уменьшены и дебет кассы, и кредит
+    дебеторки), но дебиторка внутри периода завышена ровно на недостающую
+    сумму. Расхождение доказуемо по открытой паре «платёж ↔ строки журнала»
+    и по сверке «платежи по счёту = погашения дебеторки».
+    """
+    by_payment: dict[str, list[dict]] = {}
+    for row in ledger:
+        if row["payment_id"]:
+            by_payment.setdefault(row["payment_id"], []).append(row)
+
+    excluded = exclude or set()
+    eligible = []
+    for pay in payments:
+        rows = by_payment.get(pay["payment_id"], [])
+        if pay["payment_id"] in excluded or len(rows) != 2:
+            continue
+        ts = datetime.fromisoformat(pay["timestamp"])
+        allocated = sum(int(r["credit_minor"]) for r in rows if r["account"] == AR)
+        if not (period_start <= ts <= period_end):
+            continue
+        if allocated != int(pay["amount_minor"]):
+            continue  # платеж уже мутирован другим типом
+        eligible.append((pay, rows))
+    if not eligible:
+        raise EpisodeError("no eligible payment for partial_allocation")
+    pay, rows = eligible[rng.randrange(len(eligible))]
+
+    cash_row = next(r for r in rows if r["account"] == CASH)
+    ar_row = next(r for r in rows if r["account"] == AR)
+    total = int(pay["amount_minor"])
+    delta = min(max(1, total * rng.randrange(10, 45) // 100), total - 1)
+    cash_row["debit_minor"] = int(cash_row["debit_minor"]) - delta
+    ar_row["credit_minor"] = int(ar_row["credit_minor"]) - delta
+
+    issue_id = "iss_partial_0001"
+    issue = {
+        "issue_id": issue_id,
+        "type": "partial_allocation",
+        "affected_ids": sorted([pay["payment_id"], cash_row["row_id"], ar_row["row_id"]]),
+        "expected_amount_minor": delta,
+        "currency": pay["currency"],
+        "amount_tolerance_minor": 0,
+        "evidence_sets": [
+            [f"payment:{pay['payment_id']}", f"ledger:{ar_row['row_id']}",
+             f"invoice:{ar_row['invoice_id']}"],
+            [f"payment:{pay['payment_id']}", f"ledger:{cash_row['row_id']}",
+             f"ledger:{ar_row['row_id']}"],
+        ],
+        "statement": f"платёж {pay['payment_id']} распределён в журнале на "
+                     f"{total - delta} при документе на {total}: недостаёт {delta}",
+    }
+    mutation = {
+        "issue_id": issue_id,
+        "type": "partial_allocation",
+        "causal_change": f"payment {pay['payment_id']} document keeps {total}, "
+                         f"both ledger rows reduced by {delta}",
+        "before": {"payment_amount_minor": total, "ledger_allocated_minor": total},
+        "after": {"payment_amount_minor": total, "ledger_allocated_minor": total - delta},
+        "expected_amount_minor": delta,
         "affected_ids": issue["affected_ids"],
     }
     return issue, mutation

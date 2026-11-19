@@ -79,6 +79,27 @@ class TestStructure(unittest.TestCase):
             nulls += payment_id == "null"
         self.assertGreater(nulls, 0, "sale rows must carry an explicit null payment_id")
 
+    def test_returns_are_legal_and_never_flagged(self):
+        """Возвраты — обязательный отвлекающий случай: пары строк, не в truth."""
+        files, _, ledger, invoices, payments, truth, provenance = open_data()
+        return_rows = [r for r in ledger if r["account"].startswith("4000")
+                       and int(r["debit_minor"]) > 0]
+        self.assertTrue(return_rows, "возвраты (отвлекающие случаи) не сгенерированы")
+        invoice_ids = {i["invoice_id"] for i in invoices}
+        truth_rows = {x for issue in truth for x in issue["affected_ids"]}
+        for row in return_rows:
+            self.assertEqual(row["payment_id"], "null", "возврат — не платёж")
+            self.assertIn(row["invoice_id"], invoice_ids, "возврат привязан к счёту")
+            self.assertNotIn(row["row_id"], truth_rows, "возврат не является ошибкой")
+        # возврат не ломает баланс и дебиторку
+        self.assertTrue(provenance["invariants_before"]["books_balanced"])
+        self.assertTrue(provenance["invariants_before"]["ar_matches_documents"])
+        # встречается и в эпизодах с ошибками, и в чистых
+        _, _, _, _, _, clean_truth, clean_prov = open_data(
+            config={"n_invoices": 12, "clean": True, "n_issues": 0})
+        self.assertEqual(clean_truth, [])
+        self.assertTrue(clean_prov["invariants_after"]["books_balanced"])
+
     def test_generation_is_deterministic(self):
         a = generate(SEED, SMALL)
         b = generate(SEED, SMALL)
@@ -111,9 +132,12 @@ class TestCleanHistoryThenDeclaredDiscrepancy(unittest.TestCase):
                         if i["type"] == "duplicate_entry")
         cutoff_total = sum(i["expected_amount_minor"] for i in truth
                            if i["type"] == "period_cutoff")
+        partial_total = sum(i["expected_amount_minor"] for i in truth
+                            if i["type"] == "partial_allocation")
 
         self.assertEqual(imbalance, -dup_total, "books imbalance != declared duplicates")
-        self.assertEqual(ar_diff, cutoff_total, "in-period AR discrepancy != declared cutoffs")
+        self.assertEqual(ar_diff, cutoff_total + partial_total,
+                         "in-period AR discrepancy != cutoffs + partial allocations")
         self.assertTrue(provenance["stages"][-1]["declared_discrepancies"]["verified"])
 
     def test_mutation_is_recorded_with_cause_and_effect(self):
@@ -179,6 +203,15 @@ class TestEvidenceSufficiency(unittest.TestCase):
                 pid = next(x for x in issue["affected_ids"] if x.startswith("PAY-"))
                 pay = next(p for p in payments if p["payment_id"] == pid)
                 self.assertEqual(issue["expected_amount_minor"], int(pay["amount_minor"]))
+            elif issue["type"] == "partial_allocation":
+                pid = next(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+                pay = next(p for p in payments if p["payment_id"] == pid)
+                rows = [r for r in ledger if r["payment_id"] == pid]
+                allocated = sum(int(r["credit_minor"]) for r in rows
+                                if r["account"].startswith("1200"))
+                self.assertEqual(issue["expected_amount_minor"],
+                                 int(pay["amount_minor"]) - allocated,
+                                 "документ платежа минус его распределение = заявленное расхождение")
 
 
 class TestScope(unittest.TestCase):

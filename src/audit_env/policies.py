@@ -260,6 +260,25 @@ class ReconciliationPolicy(BasePolicy):
                     "explanation": f"платёж {pay['payment_id']} внутри периода, "
                                    f"строки леджера — вне периода",
                 })
+                continue
+
+            # (c) частичное распределение: сумма погашений в журнале != документу
+            allocated = sum(int(r["credit_minor"]) for r in pay_rows
+                            if r["account"].startswith("1200"))
+            if allocated != int(pay["amount_minor"]):
+                ar_row = next((r for r in pay_rows if r["account"].startswith("1200")),
+                              pay_rows[0])
+                findings.append({
+                    "type": "partial_allocation",
+                    "affected_ids": sorted([pay["payment_id"]] + [r["row_id"] for r in pay_rows]),
+                    "claimed_amount_minor": abs(int(pay["amount_minor"]) - allocated),
+                    "currency": pay["currency"],
+                    "evidence_ids": [f"payment:{pay['payment_id']}",
+                                     f"ledger:{ar_row['row_id']}",
+                                     f"invoice:{ar_row['invoice_id']}"],
+                    "explanation": f"платёж {pay['payment_id']} распределён на {allocated} "
+                                   f"при документе на {pay['amount_minor']}",
+                })
         return findings
 
 

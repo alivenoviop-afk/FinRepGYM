@@ -46,12 +46,19 @@ def main() -> None:
     ap.add_argument("--policy", default="reconciliation",
                     choices=["reconciliation", "oracle", "random", "mark_all"])
     ap.add_argument("--clean", action="store_true", help="чистая компания, ошибок нет")
+    ap.add_argument("--issues", default=None,
+                    help="типы ошибок через запятую (по умолчанию: 2 базовых)")
+    ap.add_argument("--n-issues", type=int, default=None, help="сколько ошибок вшить")
     ap.add_argument("--mode", default="train", choices=["train", "eval"])
     args = ap.parse_args()
 
     config = dict(SMALL)
     if args.clean:
         config.update({"clean": True, "n_issues": 0})
+    if args.issues:
+        config["issue_types"] = [t.strip() for t in args.issues.split(",") if t.strip()]
+    if args.n_issues is not None:
+        config["n_issues"] = args.n_issues
 
     env = AuditEnv(mode=args.mode)
     # policy is built AFTER reset for the oracle, so reset first via a dry run
