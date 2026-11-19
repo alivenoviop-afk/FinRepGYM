@@ -1,7 +1,13 @@
 # audit-rl-env — RL-среда для дообучения моделей финансового аудита
 
-> **Статус: 19.11.2026 — контракт, все 4 типа ошибок, мультивалютность, matcher, награда.**
-> Это не сдача: остаются эпизоды, пермутации, траектории, документы и демо.
+[![tests](https://github.com/alivenoviop-afk/fintech-audit-rl/actions/workflows/tests.yml/badge.svg)](https://github.com/alivenoviop-afk/fintech-audit-rl/actions/workflows/tests.yml)
+[![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![license: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+> **Статус: 19.11.2026** — контракт, все 4 типа ошибок, мультивалютность (USD/EUR/KZT),
+> сценарии взаимодействия S1/S2, возвраты, воспроизводимость и обобщение (парные проверки),
+> matcher, награда, 4 политики. **95 тестов, `check.py` 30/30.**
+> Осталось: эпизоды, траектории, контейнер, демо и защита (22.11, 12:00).
 
 Воспроизводимый симулятор ИИ-аудитора: синтетические документы компании, инструменты
 расследования, скрытые финансовые ошибки, функция награды.
