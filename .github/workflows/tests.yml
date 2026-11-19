@@ -22,3 +22,16 @@ jobs:
       # Единая команда проверки: свипы, атаки, детерминизм, утечки, парные проверки
       - name: Единая команда проверки
         run: python scripts/check.py
+
+  container:
+    # Инструкция контейнера (пункт сдачи) проверяется здесь же:
+    # образ собирается из Python 3.11 и проверка запускается ВНУТРИ него.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Сборка образа (python:3.11-slim, без зависимостей)
+        run: docker build -t audit-rl-env .
+
+      - name: Единая команда проверки внутри контейнера
+        run: docker run --rm audit-rl-env

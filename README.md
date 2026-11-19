@@ -27,6 +27,20 @@ python -m unittest discover -s tests -v # 95 тестов
 Зависимости: **только стандартная библиотека Python 3.11+** (официальная проверка без сети).
 Локально проверено на Python 3.12, код совместим с 3.11; CI гоняет обе команды на 3.11.
 
+## Инструкция контейнера
+
+Образ содержит только Python 3.11 и код проекта — **без зависимостей и без сети во время работы**.
+
+```bash
+docker build -t audit-rl-env .                                  # сборка (сеть нужна 1 раз — для базового образа)
+docker run --rm audit-rl-env                                    # ЕДИНАЯ ПРОВЕРКА: 95 тестов + 30/30
+docker run --rm audit-rl-env python scripts/demo_all.py --fast  # демо для жюри
+docker run --rm audit-rl-env python scripts/demo.py --policy oracle   # одна политика
+```
+
+Сборка образа и запуск проверки **внутри контейнера** выполняются в CI на каждом пуше
+(джоба `container`) — инструкция подтверждается автоматически.
+
 ## Устройство
 
 ```
@@ -42,7 +56,10 @@ fintech-audit-rl/
 │   ├── build_episodes.py        # сборка 20 открытых эпизодов + реестр
 │   ├── build_trajectories.py    # траектории 4 политик + диагностика
 │   ├── check.py                 # единая команда проверки (30 проверок)
+│   ├── demo_all.py              # ДЕМО ДЛЯ ЖЮРИ: 6 шагов с репликами
 │   └── demo.py                  # показ работы среды
+├── Dockerfile                   # Python 3.11-slim, без зависимостей, CMD = проверка
+├── .dockerignore                # без .git и мусора
 ├── episodes/
 │   ├── registry.json            # реестр: split, seed, config, размеры, проверки
 │   ├── train/<episode_id>/      # 10 эпизодов: open/ + closed/
