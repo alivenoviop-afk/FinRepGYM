@@ -168,15 +168,15 @@ class TestReproducibility(unittest.TestCase):
         self.assertEqual((m["tp"], m["fp"], m["fn"]), (0, 0, 0))
         self.assertEqual(m["f1"], 1.0)
 
-    def test_reconciliation_finds_all_three_implemented_types(self):
-        config = dict(SMALL)
-        config.update({"issue_types": ["duplicate_entry", "period_cutoff",
-                                       "partial_allocation"],
-                       "n_issues": 3})
+    def test_reconciliation_finds_all_four_implemented_types(self):
+        config = {"n_invoices": 25,
+                  "issue_types": ["duplicate_entry", "period_cutoff",
+                                  "partial_allocation", "fx_rate"],
+                  "n_issues": 4}
         result = run_with(lambda e: ReconciliationPolicy(), config=config)
         m = metrics_of(result)
-        self.assertEqual(m["n_truth"], 3, "должны быть все три типа")
-        self.assertEqual((m["tp"], m["fp"], m["fn"]), (3, 0, 0),
+        self.assertEqual(m["n_truth"], 4, "должны быть все четыре типа")
+        self.assertEqual((m["tp"], m["fp"], m["fn"]), (4, 0, 0),
                          f"сверка должна найти все ошибки без ложных: {m}")
 
     def test_partial_and_cutoff_are_not_confused(self):

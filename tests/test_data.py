@@ -12,6 +12,7 @@ import io
 import json
 import re
 import unittest
+from decimal import Decimal, ROUND_HALF_UP
 
 from support import AuditEnv, SEED, SMALL, generate
 
@@ -31,6 +32,24 @@ def open_data(seed=SEED, config=None):
     truth = json.loads(files["closed"]["truth.json"])["issues"]
     provenance = json.loads(files["closed"]["provenance.json"])
     return files, manifest, ledger, invoices, payments, truth, provenance
+
+
+def fx_conv(files, manifest):
+    """Независимая конвертация в тесте: только открытые fx.csv + policy-дата."""
+    policy_day = manifest["period_end"][:10]
+    base = manifest["base_currency"]
+    rows = list(csv.DictReader(io.StringIO(files["open"]["fx.csv"])))
+    rates = {(r["date"], r["source_currency"], r["target_currency"]): Decimal(r["rate"])
+             for r in rows}
+
+    def conv(amount, src, tgt=None):
+        tgt = tgt or base
+        if src == tgt:
+            return int(amount)
+        rate = rates[(policy_day, src, tgt)]
+        return int((Decimal(int(amount)) * rate).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+    return conv, policy_day, base, rates
 
 
 class TestStructure(unittest.TestCase):
@@ -116,29 +135,39 @@ class TestCleanHistoryThenDeclaredDiscrepancy(unittest.TestCase):
         self.assertEqual(provenance["stages"][0]["stage"], "history")
 
     def test_declared_discrepancy_matches_open_records(self):
-        """Independent recomputation from ledger.csv + documents + truth.json."""
-        _, manifest, ledger, invoices, payments, truth, provenance = open_data()
+        """Независимый пересчёт в базовой валюте (по fx.csv) == сумма эффектов мутаций."""
+        files, manifest, ledger, invoices, payments, truth, provenance = open_data()
         start, end = manifest["period_start"], manifest["period_end"]
+        conv, _, _, _ = fx_conv(files, manifest)
 
-        imbalance = (sum(int(r["debit_minor"]) for r in ledger)
-                     - sum(int(r["credit_minor"]) for r in ledger))
-        ar_balance = sum(int(r["debit_minor"]) - int(r["credit_minor"]) for r in ledger
-                         if r["account"].startswith("1200") and start <= r["timestamp"] <= end)
-        invoiced = sum(int(i["total_minor"]) for i in invoices if start <= i["issued_at"] <= end)
-        paid = sum(int(p["amount_minor"]) for p in payments if start <= p["timestamp"] <= end)
+        imbalance = sum(conv(r["debit_minor"], r["currency"])
+                        - conv(r["credit_minor"], r["currency"]) for r in ledger)
+        ar_balance = sum(conv(r["debit_minor"], r["currency"])
+                         - conv(r["credit_minor"], r["currency"])
+                         for r in ledger if r["account"].startswith("1200")
+                         and start <= r["timestamp"] <= end)
+        invoiced = sum(conv(i["total_minor"], i["currency"]) for i in invoices
+                       if start <= i["issued_at"] <= end)
+        paid = sum(conv(p["amount_minor"], p["currency"]) for p in payments
+                   if start <= p["timestamp"] <= end)
         ar_diff = ar_balance - (invoiced - paid)
 
-        dup_total = sum(i["expected_amount_minor"] for i in truth
-                        if i["type"] == "duplicate_entry")
-        cutoff_total = sum(i["expected_amount_minor"] for i in truth
-                           if i["type"] == "period_cutoff")
-        partial_total = sum(i["expected_amount_minor"] for i in truth
-                            if i["type"] == "partial_allocation")
+        mutations = provenance["mutations"]
+        declared_imbalance = sum(int(m["effect_imbalance"]) for m in mutations)
+        declared_ar = sum(int(m["effect_ar_diff"]) for m in mutations)
 
-        self.assertEqual(imbalance, -dup_total, "books imbalance != declared duplicates")
-        self.assertEqual(ar_diff, cutoff_total + partial_total,
-                         "in-period AR discrepancy != cutoffs + partial allocations")
+        self.assertEqual(imbalance, declared_imbalance,
+                         "наблюдаемый баланс (база) != сумме заявленных эффектов")
+        self.assertEqual(ar_diff, declared_ar,
+                         "наблюдаемое AR-расхождение (база) != сумме заявленных эффектов")
         self.assertTrue(provenance["stages"][-1]["declared_discrepancies"]["verified"])
+        self.assertTrue(provenance["invariants_before"]["books_balanced"])
+        self.assertTrue(provenance["invariants_before"]["ar_matches_documents"])
+        # каждая эталонная ошибка имеет свою причинную запись и наоборот
+        self.assertEqual({m["type"] for m in mutations}, {t["type"] for t in truth})
+        for m in mutations:
+            self.assertIn("effect_imbalance", m)
+            self.assertIn("effect_ar_diff", m)
 
     def test_mutation_is_recorded_with_cause_and_effect(self):
         *_, truth, provenance = open_data()
@@ -166,13 +195,16 @@ class TestCleanHistoryThenDeclaredDiscrepancy(unittest.TestCase):
 
 class TestEvidenceSufficiency(unittest.TestCase):
     def test_every_evidence_id_resolves_in_open_files(self):
-        _, manifest, ledger, invoices, payments, truth, _ = open_data()
+        files, manifest, ledger, invoices, payments, truth, _ = open_data()
         row_ids = {r["row_id"] for r in ledger}
         invoice_ids = {i["invoice_id"] for i in invoices}
         payment_ids = {p["payment_id"] for p in payments}
-        policy = json.loads(generate(SEED, SMALL)["open"]["policy.json"])
+        policy = json.loads(files["open"]["policy.json"])
+        fx_keys = {(r["date"], r["source_currency"], r["target_currency"])
+                   for r in csv.DictReader(io.StringIO(files["open"]["fx.csv"]))}
 
         self.assertIn("period_boundary", policy)
+        self.assertIn("fx_rate_date", policy)
         for issue in truth:
             self.assertTrue(issue["evidence_sets"], f"{issue['issue_id']} has no evidence set")
             for evidence_set in issue["evidence_sets"]:
@@ -185,6 +217,9 @@ class TestEvidenceSufficiency(unittest.TestCase):
                         self.assertIn(value, invoice_ids, ev)
                     elif kind == "payment":
                         self.assertIn(value, payment_ids, ev)
+                    elif kind == "fx":
+                        day, src, tgt = value.split(":")
+                        self.assertIn((day, src, tgt), fx_keys, ev)
                     elif kind == "policy":
                         self.assertIn(value.replace("period", "period_boundary").replace(
                             "balance", "rounding"), policy, ev)
@@ -192,7 +227,8 @@ class TestEvidenceSufficiency(unittest.TestCase):
                         self.fail(f"unknown evidence prefix: {ev}")
 
     def test_expected_amount_equals_the_cited_record(self):
-        _, _, ledger, _, payments, truth, _ = open_data()
+        files, manifest, ledger, _, payments, truth, _ = open_data()
+        conv, _, _, _ = fx_conv(files, manifest)
         by_row = {r["row_id"]: r for r in ledger}
         for issue in truth:
             if issue["type"] == "duplicate_entry":
@@ -212,6 +248,81 @@ class TestEvidenceSufficiency(unittest.TestCase):
                 self.assertEqual(issue["expected_amount_minor"],
                                  int(pay["amount_minor"]) - allocated,
                                  "документ платежа минус его распределение = заявленное расхождение")
+            elif issue["type"] == "fx_rate":
+                pid = next(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+                pay = next(p for p in payments if p["payment_id"] == pid)
+                ar_row = next(r for r in ledger if r["payment_id"] == pid
+                              and r["account"].startswith("1200"))
+                expected = conv(pay["amount_minor"], pay["currency"], ar_row["currency"])
+                self.assertEqual(issue["expected_amount_minor"],
+                                 abs(int(ar_row["credit_minor"]) - expected),
+                                 "расхождение = |журнал − документ × policy-курс|")
+
+
+class TestMultiCurrency(unittest.TestCase):
+    CONFIG = {"n_invoices": 40}
+
+    def test_documents_use_several_currencies(self):
+        """Спека требует разные валюты; конвертация обязательна для сравнения."""
+        _, manifest, ledger, invoices, payments, *_ = open_data(config=self.CONFIG)
+        used = {i["currency"] for i in invoices} | {p["currency"] for p in payments}
+        self.assertGreaterEqual(len(used), 2, "в эпизоде должны использоваться разные валюты")
+        self.assertEqual(set(manifest["currencies"]), {"USD", "EUR", "KZT"})
+        self.assertEqual(manifest["base_currency"], "USD")
+        led_ccy = {r["currency"] for r in ledger}
+        self.assertTrue(led_ccy <= set(manifest["currencies"]),
+                        "валюта записи должна быть заявлена в манифесте")
+
+    def test_cross_currency_payment_posts_in_base(self):
+        """Документ в одной валюте, строки постинга в базовой: без fx.csv не сравнить."""
+        _, manifest, ledger, _, payments, *_ = open_data(config=self.CONFIG)
+        base = manifest["base_currency"]
+        docs = {p["payment_id"]: p for p in payments}
+        rows_by_pay: dict[str, list[dict]] = {}
+        for r in ledger:
+            if r["payment_id"] and r["payment_id"] != "null":
+                rows_by_pay.setdefault(r["payment_id"], []).append(r)
+        cross = [pid for pid, rows in rows_by_pay.items()
+                 if docs[pid]["currency"] != rows[0]["currency"]]
+        self.assertTrue(cross, "кросс-валютные платежи обязательны (сценарий спеки)")
+        for pid in cross:
+            rows = rows_by_pay[pid]
+            self.assertTrue(all(r["currency"] == base for r in rows),
+                            "кросс-валютный платёж постится в базовой валюте")
+
+    def test_fx_rates_cover_policy_date_for_every_pair(self):
+        files, manifest, *_ = open_data(config=self.CONFIG)
+        policy_day = manifest["period_end"][:10]
+        rows = list(csv.DictReader(io.StringIO(files["open"]["fx.csv"])))
+        for a in manifest["currencies"]:
+            for b in manifest["currencies"]:
+                if a == b:
+                    continue
+                hit = any(r["date"] == policy_day and r["source_currency"] == a
+                          and r["target_currency"] == b for r in rows)
+                self.assertTrue(hit, f"нет курса {a}->{b} на policy-дату {policy_day}")
+        for r in rows:
+            self.assertRegex(r["rate"], r"^\d+\.\d+$", "курс — десятичная строка")
+
+    def test_fx_error_is_recomputed_from_open_records(self):
+        config = {"n_invoices": 25, "issue_types": ["fx_rate"], "n_issues": 1}
+        files, manifest, ledger, _, payments, truth, prov = open_data(config=config)
+        self.assertEqual([t["type"] for t in truth], ["fx_rate"])
+        conv, _, _, _ = fx_conv(files, manifest)
+        issue = truth[0]
+        pid = next(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+        pay = next(p for p in payments if p["payment_id"] == pid)
+        ar_row = next(r for r in ledger if r["payment_id"] == pid
+                      and r["account"].startswith("1200"))
+        # журнал отличается от документа, приведённого по policy-курсу
+        self.assertNotEqual(int(ar_row["credit_minor"]),
+                            conv(pay["amount_minor"], pay["currency"], ar_row["currency"]))
+        self.assertEqual(issue["currency"], manifest["base_currency"])
+        self.assertTrue(provenance_ok(prov))
+
+
+def provenance_ok(provenance: dict) -> bool:
+    return bool(provenance["stages"][-1]["declared_discrepancies"]["verified"])
 
 
 class TestScope(unittest.TestCase):

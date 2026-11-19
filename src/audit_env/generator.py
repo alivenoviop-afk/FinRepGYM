@@ -1,34 +1,37 @@
-"""Synthetic company generator (spec section 02 and 03).
+"""Synthetic company generator (spec sections 02 and 03).
 
 Pipeline, in this exact order:
 
 1. **Hidden history** — a consistent double-entry story: invoices, payments,
-   counterparties. Every business event produces a *pair* of ledger rows, so
-   ``sum(debit_minor) == sum(credit_minor)`` holds by construction.
+   counterparties, returns. Every business event produces a *pair* of ledger rows.
 2. **Documents** — ``ledger.csv``, ``invoices.jsonl``, ``payments.jsonl``,
    ``fx.csv``, ``policy.json``, ``manifest.json``.
 3. **Causal mutations** — errors are injected *after* the clean history is
-   verified, and each mutation is recorded in ``provenance.json`` with a
-   before/after snapshot. ``truth.json`` describes the real discrepancy and the
-   available evidence, never a randomly suspicious row.
+   verified; each mutation records its cause and its exact effect, and
+   ``truth.json`` describes the real discrepancy plus available evidence.
 
-The agent never sees ``truth.json``, ``provenance.json`` or the seed.
+Currency model (все 4 типа ошибок)
+----------------------------------
+* Documents keep their own currency: invoices in one of ``currencies``,
+  payments in their own (possibly different) currency.
+* A payment posted **in the invoice currency** keeps both ledger rows in that
+  currency (no conversion, exact per-currency balance).
+* A payment in a **different currency** is posted entirely in the **base
+  currency**: both rows use the single converted integer, so
+  ``sum(debit) == sum(credit)`` and the AR reconciliation hold *exactly* —
+  no chain-rounding drift.
+* Conversion always uses ``policy.fx_rate_date`` (= period_end) and the exact
+  decimal rates published in ``fx.csv``.
 
-Implemented issue types (3 of the required 4 — see docs/RULES.md):
+Implemented issue types (all four required types):
 
-* ``duplicate_entry``     — one side of a balanced pair is duplicated, so the
-  books stop balancing by exactly the duplicated amount.
-* ``period_cutoff``       — both rows of a payment are moved across the period
-  boundary, so the in-period AR balance no longer agrees with the documents.
-* ``partial_allocation``  — the payment document keeps its full amount while
-  both ledger rows are reduced, so the in-period AR balance is inflated by the
-  missing part.
-
-``fx_rate`` is added on 20.11 (multi-currency conversion).
-
-Distractors generated on purpose: split payments (legal), repeated identical
-invoice amounts (legal), unpaid invoices (legal), invoices issued near the
-boundary (legal).
+* ``duplicate_entry``     — a revenue credit row is copied; books stop balancing.
+* ``period_cutoff``       — a payment's ledger rows are re-dated past period_end.
+* ``partial_allocation``  — the payment document keeps its amount, both ledger
+  rows are reduced; in-period AR is inflated by the missing part.
+* ``fx_rate``             — the converted AR row of a cross-currency payment is
+  recomputed with a non-policy rate; base-currency books stop balancing by the
+  conversion delta.
 """
 
 from __future__ import annotations
@@ -38,20 +41,19 @@ import hashlib
 import io
 import json
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = "audit-rl/1.0"
 
 ISSUE_TYPES = ("duplicate_entry", "partial_allocation", "fx_rate", "period_cutoff")
+IMPLEMENTED_TYPES = ISSUE_TYPES  # все четыре типа требуемых спекой реализованы
 
-# Реализовано в этой версии; fx_rate добавляется 20.11 (см. docs/RULES.md)
-IMPLEMENTED_TYPES = ("duplicate_entry", "period_cutoff", "partial_allocation")
-
-# Доля оплаченных счетов, к которым добавляется законный возврат (обязательный
-# отвлекающий случай из спеки). Возврат — пара строк, дебиторку не затрагивает.
-RETURNS_RATE = 0.18
+RETURNS_RATE = 0.18          # доля оплаченных счетов с законным возвратом
+CROSS_CCY_RATE = 0.30        # доля платежей в другой валюте (сценарий спеки)
+RATE_PRECISION = 6           # знаков после запятой в fx.csv
 
 CASH = "1010_cash"
 AR = "1200_accounts_receivable"
@@ -66,9 +68,14 @@ INVOICE_COLUMNS = ["doc_id", "invoice_id", "entity_id", "issued_at", "due_at",
                    "currency", "total_minor", "line_items"]
 PAYMENT_COLUMNS = ["doc_id", "payment_id", "timestamp", "currency", "amount_minor", "invoice_refs"]
 
+MINOR_DIGITS = {"USD": 2, "EUR": 2, "KZT": 2}
+# USD за единицу; значение = сколько USD за 1 единицу валюты
+USD_PER_UNIT = {"USD": Decimal("1"), "EUR": Decimal("1.08"), "KZT": Decimal("0.00185")}
+
 DEFAULT_CONFIG: dict[str, Any] = {
     "n_invoices": 80,
     "base_currency": "USD",
+    "currencies": ["USD", "EUR", "KZT"],
     "minor_unit_digits": 2,
     "timezone": "Asia/Almaty",
     "utc_offset": "+05:00",
@@ -111,7 +118,6 @@ def _episode_id(seed: int, cfg: dict) -> str:
 
 
 def _split_amount(total: int, parts: int, rng: random.Random) -> list[int]:
-    """Split a minor-unit amount into ``parts`` integers that sum exactly to it."""
     if parts <= 1:
         return [total]
     cuts = sorted(rng.randrange(0, total + 1) for _ in range(parts - 1))
@@ -123,21 +129,85 @@ def _split_amount(total: int, parts: int, rng: random.Random) -> list[int]:
 
 
 # --------------------------------------------------------------------------- #
-# invariants (checked before AND after mutation)
+# FX engine: единый источник курсов и конвертации
+# --------------------------------------------------------------------------- #
+class FxTable:
+    """Курсы всех направленных пар на наборе дат. Строки fx.csv — источник истины."""
+
+    def __init__(self, rng: random.Random, currencies: list[str],
+                 period_start: date, period_end: date) -> None:
+        self.currencies = list(currencies)
+        dates = []
+        d = period_start
+        while d <= period_end:
+            dates.append(d)
+            d += timedelta(days=7)
+        if period_end not in dates:
+            dates.append(period_end)  # policy:fx_rate_date обязан существовать в fx.csv
+        self.dates = sorted(dates)
+
+        # случайное блуждание вокруг базовых котировок
+        level = {c: USD_PER_UNIT[c] for c in currencies}
+        self.usd_per: dict[date, dict[str, Decimal]] = {}
+        for day in self.dates:
+            for c in currencies:
+                if c != "USD":
+                    jitter = Decimal(str(1 + rng.uniform(-0.02, 0.02)))
+                    level[c] = level[c] * jitter
+            self.usd_per[day] = {c: level[c] for c in currencies}
+
+        self.rates: dict[tuple[date, str, str], Decimal] = {}
+        for day in self.dates:
+            for a in currencies:
+                for b in currencies:
+                    if a == b:
+                        continue
+                    raw = self.usd_per[day][a] / self.usd_per[day][b]
+                    self.rates[(day, a, b)] = raw.quantize(
+                        Decimal(1).scaleb(-RATE_PRECISION), rounding=ROUND_HALF_UP)
+
+    def rate(self, day: date, src: str, tgt: str) -> Decimal:
+        if src == tgt:
+            return Decimal(1)
+        return self.rates[(day, src, tgt)]
+
+    def convert(self, amount_minor: int, src: str, tgt: str, day: date) -> int:
+        if src == tgt:
+            return int(amount_minor)
+        value = (Decimal(int(amount_minor)) * self.rate(day, src, tgt))
+        return int(value.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+    def csv_rows(self) -> list[dict]:
+        rows = []
+        for (day, a, b) in sorted(self.rates, key=lambda k: (k[0], k[1], k[2])):
+            rows.append({"date": day.isoformat(), "source_currency": a,
+                         "target_currency": b, "rate": str(self.rates[(day, a, b)])})
+        return rows
+
+
+# --------------------------------------------------------------------------- #
+# invariants (считаются в БАЗОВОЙ валюте по курсу policy.fx_rate_date)
 # --------------------------------------------------------------------------- #
 def _invariants(ledger: list[dict], invoices: list[dict], payments: list[dict],
-                period_start: datetime, period_end: datetime) -> dict[str, Any]:
-    sum_debits = sum(int(r["debit_minor"]) for r in ledger)
-    sum_credits = sum(int(r["credit_minor"]) for r in ledger)
+                period_start: datetime, period_end: datetime, fx: FxTable,
+                base: str) -> dict[str, Any]:
+    policy_day = period_end.date()
+
+    def to_base(amount: int, ccy: str) -> int:
+        return fx.convert(int(amount), ccy, base, policy_day)
 
     def in_period(ts: str) -> bool:
         t = datetime.fromisoformat(ts)
         return period_start <= t <= period_end
 
-    ar_balance = sum(int(r["debit_minor"]) - int(r["credit_minor"])
+    sum_debits = sum(to_base(r["debit_minor"], r["currency"]) for r in ledger)
+    sum_credits = sum(to_base(r["credit_minor"], r["currency"]) for r in ledger)
+    ar_balance = sum(to_base(r["debit_minor"], r["currency"]) - to_base(r["credit_minor"], r["currency"])
                      for r in ledger if r["account"] == AR and in_period(r["timestamp"]))
-    invoiced = sum(int(i["total_minor"]) for i in invoices if in_period(i["issued_at"]))
-    paid = sum(int(p["amount_minor"]) for p in payments if in_period(p["timestamp"]))
+    invoiced = sum(to_base(i["total_minor"], i["currency"]) for i in invoices
+                   if in_period(i["issued_at"]))
+    paid = sum(to_base(p["amount_minor"], p["currency"]) for p in payments
+               if in_period(p["timestamp"]))
     return {
         "sum_debits": sum_debits,
         "sum_credits": sum_credits,
@@ -146,48 +216,38 @@ def _invariants(ledger: list[dict], invoices: list[dict], payments: list[dict],
         "invoiced_in_period": invoiced,
         "paid_in_period": paid,
         "ar_matches_documents": ar_balance == invoiced - paid,
+        "base_currency": base,
     }
 
 
 def _verify_declared(before: dict, after: dict, mutations: list[dict]) -> dict[str, Any]:
-    """Independent check that every declared discrepancy is really there.
+    """Независимая проверка: сумма заявленных эффектов == наблюдаемым расхождениям.
 
-    This is what the jury re-computes from the records alone:
-
-    * ``sum(debit) - sum(credit)`` must equal the total of injected duplicates;
-    * in-period AR balance minus ``invoiced - paid`` must equal the total of
-      injected period-cutoff amounts **plus** injected partial allocations
-      (both inflate the in-period AR balance);
-    * a clean episode must satisfy both with zero.
+    Каждая мутация несёт подписанные эффекты в базовой валюте:
+    ``effect_imbalance`` (Σдебет − Σкредит) и ``effect_ar_diff``
+    (AR_в_периоде − (выставлено − оплачено)).
     """
     imbalance = after["sum_debits"] - after["sum_credits"]
     ar_diff = after["ar_balance_in_period"] - (after["invoiced_in_period"] - after["paid_in_period"])
 
-    dup_total = sum(int(m["expected_amount_minor"]) for m in mutations
-                    if m["type"] == "duplicate_entry")
-    cutoff_total = sum(int(m["expected_amount_minor"]) for m in mutations
-                       if m["type"] == "period_cutoff")
-    partial_total = sum(int(m["expected_amount_minor"]) for m in mutations
-                        if m["type"] == "partial_allocation")
+    declared_imbalance = sum(int(m["effect_imbalance"]) for m in mutations)
+    declared_ar = sum(int(m["effect_ar_diff"]) for m in mutations)
 
     problems = []
-    # duplicated credit row -> sum(debit) - sum(credit) is negative by that amount
-    if imbalance != -dup_total:
-        problems.append(f"books imbalance {imbalance} != -declared duplicates {-dup_total}")
-    # duplicate does not touch AR; cutoff removes an AR credit from the period;
-    # partial allocation shrinks an AR credit inside the period
-    if ar_diff != cutoff_total + partial_total:
-        problems.append(f"AR discrepancy {ar_diff} != declared cutoffs {cutoff_total} "
-                        f"+ partials {partial_total}")
+    if imbalance != declared_imbalance:
+        problems.append(f"books imbalance {imbalance} != declared {declared_imbalance}")
+    if ar_diff != declared_ar:
+        problems.append(f"AR discrepancy {ar_diff} != declared {declared_ar}")
+    if not before["books_balanced"] or not before["ar_matches_documents"]:
+        problems.append("clean history was not balanced before mutation")
     if problems:
         raise EpisodeError("declared discrepancy does not match records: " + "; ".join(problems))
 
     return {
         "books_imbalance": imbalance,
-        "declared_duplicate_total": dup_total,
+        "declared_imbalance": declared_imbalance,
         "ar_period_discrepancy": ar_diff,
-        "declared_period_cutoff_total": cutoff_total,
-        "declared_partial_allocation_total": partial_total,
+        "declared_ar_discrepancy": declared_ar,
         "verified": True,
     }
 
@@ -196,10 +256,7 @@ def _verify_declared(before: dict, after: dict, mutations: list[dict]) -> dict[s
 # generation
 # --------------------------------------------------------------------------- #
 def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[str, str]]:
-    """Build one episode. Returns {"open": {...}, "closed": {...}} of file texts.
-
-    Deterministic: same seed + config -> byte-identical files.
-    """
+    """Build one episode. Deterministic: same seed + config -> byte-identical files."""
     cfg = {**DEFAULT_CONFIG, **(config or {})}
     if cfg["clean"]:
         issue_types: list[str] = []
@@ -216,21 +273,26 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
     period_end = ((datetime.fromisoformat(cfg["period_end"]) + timedelta(days=1))
                   .replace(tzinfo=tz) - timedelta(seconds=1))
     n_days = max(1, (period_end.date() - period_start.date()).days + 1)
-    currency = cfg["base_currency"]
 
-    # ---- stage 1: hidden history ---------------------------------------- #
+    currencies = list(cfg["currencies"])
+    base = cfg["base_currency"]
+    if base not in currencies:
+        currencies = [base] + currencies
+
+    fx = FxTable(rng, currencies, period_start.date(), period_end.date())
+    policy_day = period_end.date()
+
+    # ---- stage 1: hidden history ----------------------------------------- #
     n_entities = rng.randint(4, 8)
     entities = [f"ENT-{i:03d}" for i in range(1, n_entities + 1)]
-
-    # amount pool -> legitimate repeated sums on purpose (distractor)
-    pool = [rng.randint(50_00, 4_000_00) * 100 for _ in range(6)]
+    pool = [rng.randint(50_00, 400_00) * 100 for _ in range(6)]
 
     invoices: list[dict] = []
     payments: list[dict] = []
     ledger: list[dict] = []
     row_no = 0
 
-    def add_row(ts: datetime, account: str, debit: int, credit: int,
+    def add_row(ts: datetime, account: str, debit: int, credit: int, ccy: str,
                 entity: str, invoice_id: str | None, payment_id: str | None) -> dict:
         nonlocal row_no
         row_no += 1
@@ -240,7 +302,7 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
             "account": account,
             "debit_minor": int(debit),
             "credit_minor": int(credit),
-            "currency": currency,
+            "currency": ccy,
             "entity_id": entity,
             "invoice_id": invoice_id,
             "payment_id": payment_id,
@@ -248,11 +310,13 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         ledger.append(row)
         return row
 
+    weights = ([6, 3, 2] + [2] * 8)[: len(currencies)]
     for i in range(int(cfg["n_invoices"])):
         day = rng.randrange(0, n_days)
         issued = period_start + timedelta(days=day, hours=rng.randrange(8, 18), minutes=rng.randrange(60))
         due = issued + timedelta(days=14)
         amount = rng.choice(pool)
+        inv_ccy = rng.choices(currencies, weights=weights, k=1)[0]
         entity = rng.choice(entities)
         inv_id = f"INV-2026-{i + 1:04d}"
         parts = rng.randint(1, 3) if cfg["distractors"] else 1
@@ -263,20 +327,19 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
             "entity_id": entity,
             "issued_at": _iso(issued),
             "due_at": _iso(due),
-            "currency": currency,
+            "currency": inv_ccy,
             "total_minor": amount,
-            # line items sum exactly to total_minor (document-level invariant)
             "line_items": [
                 {"sku": f"SKU-{rng.randrange(100, 999)}", "qty": 1, "unit_price_minor": s}
                 for s in shares
             ],
         })
-        # sale: AR debit / revenue credit (balanced pair)
-        add_row(issued, AR, amount, 0, entity, inv_id, None)
-        add_row(issued, REVENUE, 0, amount, entity, inv_id, None)
+        add_row(issued, AR, amount, 0, inv_ccy, entity, inv_id, None)
+        add_row(issued, REVENUE, 0, amount, inv_ccy, entity, inv_id, None)
 
     pay_no = 0
     returns_made = 0
+    cross_made = 0
     for inv in invoices:
         r = rng.random()
         if r < 0.25:
@@ -287,9 +350,19 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
             pay_dt = period_end - timedelta(hours=rng.randrange(1, 20))
         total = inv["total_minor"]
         if cfg["distractors"] and r < 0.50:
-            shares = _split_amount(total, 2, rng)  # split payment: legitimate distractor
+            shares = _split_amount(total, 2, rng)   # split payment: legitimate
         else:
             shares = [total]
+
+        # платёж в ДРУГОЙ валюте — обязательный сценарий спеки; постинг в базовую.
+        # Первый оплаченный счёт гарантированно получает кросс-валютный платёж.
+        cross = bool(cfg["distractors"]) and (cross_made == 0 or rng.random() < CROSS_CCY_RATE)
+        if cross:
+            cross_made += 1
+            pay_ccy = rng.choice([c for c in currencies if c != inv["currency"]])
+        else:
+            pay_ccy = inv["currency"]
+
         for share in shares:
             pay_no += 1
             pay_id = f"PAY-2026-{pay_no:04d}"
@@ -297,84 +370,89 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
                 "doc_id": f"pay_doc_{pay_no:04d}",
                 "payment_id": pay_id,
                 "timestamp": _iso(pay_dt),
-                "currency": currency,
+                "currency": pay_ccy,
                 "amount_minor": share,
                 "invoice_refs": [inv["invoice_id"]],
             })
             entity = inv["entity_id"]
-            add_row(pay_dt, CASH, share, 0, entity, inv["invoice_id"], pay_id)
-            add_row(pay_dt, AR, 0, share, entity, inv["invoice_id"], pay_id)
+            if pay_ccy == inv["currency"]:
+                add_row(pay_dt, CASH, share, 0, pay_ccy, entity, inv["invoice_id"], pay_id)
+                add_row(pay_dt, AR, 0, share, inv["currency"], entity, inv["invoice_id"], pay_id)
+            else:
+                posted = fx.convert(share, pay_ccy, base, policy_day)
+                add_row(pay_dt, CASH, posted, 0, base, entity, inv["invoice_id"], pay_id)
+                add_row(pay_dt, AR, 0, posted, base, entity, inv["invoice_id"], pay_id)
 
-        # Законный возврат: пара строк (дебет выручки / кредит кассы).
-        # Баланс книг сохраняется, дебиторка не затрагивается, truth не попадает.
-        # Первый оплаченный счёт получает возврат гарантированно: спека требует
-        # возвраты как обязательный отвлекающий случай.
+        # Законный возврат: пара строк, дебиторку не затрагивает, в truth не попадает.
         if cfg["distractors"] and (returns_made == 0 or rng.random() < RETURNS_RATE):
             returns_made += 1
             refund = max(1, int(total * rng.randrange(15, 50) / 100))
             refund_dt = pay_dt + timedelta(days=rng.randrange(1, 10))
             if refund_dt > period_end:
                 refund_dt = period_end - timedelta(minutes=rng.randrange(1, 30))
-            add_row(refund_dt, REVENUE, refund, 0, inv["entity_id"], inv["invoice_id"], None)
-            add_row(refund_dt, CASH, 0, refund, inv["entity_id"], inv["invoice_id"], None)
+            add_row(refund_dt, REVENUE, refund, 0, inv["currency"],
+                    inv["entity_id"], inv["invoice_id"], None)
+            add_row(refund_dt, CASH, 0, refund, inv["currency"],
+                    inv["entity_id"], inv["invoice_id"], None)
 
-    # ---- verify the clean history --------------------------------------- #
-    before = _invariants(ledger, invoices, payments, period_start, period_end)
+    # ---- verify the clean history ---------------------------------------- #
+    before = _invariants(ledger, invoices, payments, period_start, period_end, fx, base)
     if not before["books_balanced"] or not before["ar_matches_documents"]:
         raise EpisodeError(f"clean books violate invariants: {before}")
-
-    provenance_stages = [
-        {"stage": "history", "detail": "balanced double-entry books generated and verified",
-         "invariants": before},
-    ]
+    provenance_stages = [{"stage": "history", "detail": "balanced books verified in base currency",
+                          "invariants": before}]
 
     # ---- stage 3: causal mutations --------------------------------------- #
     truth: list[dict] = []
     mutations: list[dict] = []
+    used_payments: set[str] = set()
+    chosen = issue_types[:n_issues]
+    for kind in chosen:
+        if kind == "duplicate_entry":
+            issue, mutation = _inject_duplicate(rng, ledger, invoices, fx, policy_day)
+        elif kind == "period_cutoff":
+            issue, mutation = _inject_period_cutoff(rng, ledger, payments,
+                                                    period_start, period_end, used_payments,
+                                                    fx, policy_day)
+            used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+        elif kind == "partial_allocation":
+            issue, mutation = _inject_partial_allocation(rng, ledger, payments,
+                                                         period_start, period_end,
+                                                         used_payments, fx, policy_day)
+            used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+        elif kind == "fx_rate":
+            issue, mutation = _inject_fx_rate(rng, ledger, payments, used_payments,
+                                              fx, policy_day, base)
+            used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+        else:  # pragma: no cover - guarded above
+            raise EpisodeError(f"issue type not implemented: {kind}")
+        truth.append(issue)
+        mutations.append(mutation)
+        provenance_stages.append({"stage": "mutation", "issue_id": issue["issue_id"],
+                                  "type": kind, "causal_change": mutation["causal_change"]})
 
-    if n_issues:
-        chosen = issue_types[:n_issues]
-        used_payments: set[str] = set()
-        for kind in chosen:
-            if kind == "duplicate_entry":
-                issue, mutation = _inject_duplicate(rng, ledger, invoices)
-            elif kind == "period_cutoff":
-                issue, mutation = _inject_period_cutoff(rng, ledger, payments,
-                                                        period_start, period_end, used_payments)
-                used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
-            elif kind == "partial_allocation":
-                issue, mutation = _inject_partial_allocation(rng, ledger, payments,
-                                                             period_start, period_end,
-                                                             used_payments)
-                used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
-            else:  # pragma: no cover - guarded above
-                raise EpisodeError(f"issue type not implemented: {kind}")
-            truth.append(issue)
-            mutations.append(mutation)
-            provenance_stages.append({"stage": "mutation", "issue_id": issue["issue_id"],
-                                      "type": kind, "causal_change": mutation["causal_change"]})
-
-    after = _invariants(ledger, invoices, payments, period_start, period_end)
+    after = _invariants(ledger, invoices, payments, period_start, period_end, fx, base)
     discrepancies = _verify_declared(before, after, mutations)
     provenance_stages.append({"stage": "verify", "invariants_after": after,
                               "declared_discrepancies": discrepancies})
 
     # ---- files ------------------------------------------------------------ #
-    n_docs = len(invoices) + len(payments)
     manifest = {
         "schema_version": SCHEMA_VERSION,
         "episode_id": _episode_id(seed, cfg),
-        "base_currency": currency,
+        "base_currency": base,
+        "currencies": {c: MINOR_DIGITS.get(c, 2) for c in currencies},
         "minor_unit_digits": int(cfg["minor_unit_digits"]),
         "period_start": period_start.isoformat(timespec="seconds"),
         "period_end": period_end.isoformat(timespec="seconds"),
         "timezone": cfg["timezone"],
         "utc_offset": cfg["utc_offset"],
         "n_records": len(ledger),
-        "n_documents": n_docs,
+        "n_documents": len(invoices) + len(payments),
         "tables": {"ledger": len(ledger), "invoices": len(invoices),
-                   "payments": len(payments), "fx": "dates x pairs"},
-        "rounding": "integer minor units; no rounding applied inside an episode",
+                   "payments": len(payments), "fx": len(fx.csv_rows())},
+        "rounding": "integer minor units; FX rates are decimal strings, "
+                    "half-up to minor unit on conversion",
         "null_token": NULL_TOKEN,
         "issue_type_vocabulary": list(ISSUE_TYPES),
         "page_limit": 50,
@@ -384,26 +462,20 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
     policy = {
         "fx_rate_date": "period_end",
         "period_boundary": "inclusive: period_start 00:00:00 .. period_end 23:59:59 in episode timezone",
-        "rounding": "all amounts are integers in minor units; FX rates are decimal strings",
-        "comparison_rule": "amounts in different currencies must be converted with fx.csv before comparison",
-        "evidence_rule": "a finding must cite record ids that exist; at least one full allowed evidence set is required by the evaluator",
+        "rounding": "all amounts are integers in minor units; FX rates are decimal strings; "
+                    "conversion rounds half-up to the target currency's minor unit",
+        "comparison_rule": "amounts in different currencies must be converted with fx.csv "
+                           "before comparison",
+        "evidence_rule": "a finding must cite record ids that exist; at least one full "
+                         "allowed evidence set is required by the evaluator",
     }
-
-    fx_rows = []
-    for offset in range(0, n_days, 7):
-        d = (period_start + timedelta(days=offset)).date().isoformat()
-        fx_rows.append({"date": d, "source_currency": "EUR", "target_currency": currency,
-                        "rate": f"{0.9 + rng.randrange(0, 20) / 100:.4f}"})
-        fx_rows.append({"date": d, "source_currency": "USD", "target_currency": currency,
-                        "rate": "1.0000"})
-    fx_csv = _csv_text(fx_rows, ["date", "source_currency", "target_currency", "rate"])
 
     open_files = {
         "manifest.json": json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
         "ledger.csv": _csv_text(ledger, LEDGER_COLUMNS),
         "invoices.jsonl": _jsonl(invoices, INVOICE_COLUMNS),
         "payments.jsonl": _jsonl(payments, PAYMENT_COLUMNS),
-        "fx.csv": fx_csv,
+        "fx.csv": _csv_text(fx.csv_rows(), ["date", "source_currency", "target_currency", "rate"]),
         "policy.json": json.dumps(policy, ensure_ascii=False, indent=2) + "\n",
     }
     closed_files = {
@@ -420,21 +492,17 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
 
 
 # --------------------------------------------------------------------------- #
-# the two implemented mutations
+# the four mutations (каждая несёт подписанные эффекты в базовой валюте)
 # --------------------------------------------------------------------------- #
-def _inject_duplicate(rng: random.Random, ledger: list[dict],
-                      invoices: list[dict]) -> tuple[dict, dict]:
-    """Duplicate one revenue-credit row.
-
-    The two rows of every business event stay balanced, but this copy adds an
-    extra credit, so ``sum(debit) - sum(credit)`` becomes ``-amount``. Revenue in
-    the period is double counted against the invoice it belongs to.
-    """
+def _inject_duplicate(rng: random.Random, ledger: list[dict], invoices: list[dict],
+                      fx: FxTable, policy_day: date) -> tuple[dict, dict]:
+    """Копия кредитной строки выручки: Σдебет − Σкредит = −сумма (в базовой)."""
     candidates = [r for r in ledger if r["account"] == REVENUE and int(r["credit_minor"]) > 0]
     src = rng.choice(candidates)
     dup = dict(src, row_id=f"row_{len(ledger) + 1:05d}")
     ledger.append(dup)
     amount = int(dup["credit_minor"])
+    amount_base = fx.convert(amount, dup["currency"], "USD", policy_day)
     issue_id = "iss_duplicate_0001"
     issue = {
         "issue_id": issue_id,
@@ -447,16 +515,19 @@ def _inject_duplicate(rng: random.Random, ledger: list[dict],
             [f"ledger:{dup['row_id']}", f"ledger:{src['row_id']}", f"invoice:{dup['invoice_id']}"],
             [f"ledger:{dup['row_id']}", f"ledger:{src['row_id']}"],
         ],
-        "statement": "строка выручки продублирована: два идентичных поля записи на одну "
-                     "счёт-фактуру, равенство Σдебет=Σкредит нарушено на сумму строки",
+        "statement": "строка выручки продублирована: две идентичные записи на одну "
+                     "счёт-фактуру, равенство дебет=кредит нарушено на сумму строки",
     }
     mutation = {
         "issue_id": issue_id,
         "type": "duplicate_entry",
-        "causal_change": f"copied ledger row {src['row_id']} -> {dup['row_id']} (credit side only)",
+        "causal_change": f"copied ledger row {src['row_id']} -> {dup['row_id']} (credit side)",
         "before": {"sum_debits_minus_credits": 0},
-        "after": {"sum_debits_minus_credits": -amount},
+        "after": {"sum_debits_minus_credits": -amount_base},
         "expected_amount_minor": amount,
+        "currency": dup["currency"],
+        "effect_imbalance": -amount_base,
+        "effect_ar_diff": 0,
         "affected_ids": [dup["row_id"]],
     }
     return issue, mutation
@@ -464,14 +535,9 @@ def _inject_duplicate(rng: random.Random, ledger: list[dict],
 
 def _inject_period_cutoff(rng: random.Random, ledger: list[dict], payments: list[dict],
                           period_start: datetime, period_end: datetime,
-                          exclude: set[str] | None = None) -> tuple[dict, dict]:
-    """Re-date the *ledger rows* of one in-period payment across period_end.
-
-    The payment document keeps its true timestamp, so documents and ledger
-    disagree by exactly the payment amount *inside* the period. That is the
-    declared discrepancy, and it is provable from records the agent can read
-    (payment doc + ledger row + policy boundary) — no hidden fact is required.
-    """
+                          exclude: set[str] | None, fx: FxTable,
+                          policy_day: date) -> tuple[dict, dict]:
+    """Строки платежа переезжают за period_end; документ остаётся с настоящей датой."""
     by_payment: dict[str, list[dict]] = {}
     for row in ledger:
         if row["payment_id"]:
@@ -493,51 +559,48 @@ def _inject_period_cutoff(rng: random.Random, ledger: list[dict], payments: list
     for row in rows:
         row["timestamp"] = _iso(new_ts)
 
-    amount = int(pay["amount_minor"])
     ar_row = next(r for r in rows if r["account"] == AR)
-    cash_row = next(r for r in rows if r["account"] == CASH)
+    amount = int(pay["amount_minor"])
+    ar_base = fx.convert(int(ar_row["credit_minor"]), ar_row["currency"], "USD", policy_day)
     issue_id = "iss_period_0001"
     issue = {
         "issue_id": issue_id,
         "type": "period_cutoff",
-        "affected_ids": sorted([pay["payment_id"], ar_row["row_id"], cash_row["row_id"]]),
+        "affected_ids": sorted([pay["payment_id"], ar_row["row_id"]] +
+                               [r["row_id"] for r in rows if r is not ar_row]),
         "expected_amount_minor": amount,
         "currency": pay["currency"],
         "amount_tolerance_minor": 0,
         "evidence_sets": [
             [f"payment:{pay['payment_id']}", f"ledger:{ar_row['row_id']}", "policy:period"],
-            [f"payment:{pay['payment_id']}", f"ledger:{cash_row['row_id']}",
+            [f"payment:{pay['payment_id']}",
+             f"ledger:{next(r for r in rows if r is not ar_row)['row_id']}",
              f"ledger:{ar_row['row_id']}", "policy:period"],
         ],
-        "statement": f"строки платежа {pay['payment_id']} отнесены к периоду после period_end "
-                     f"при документе с настоящей датой; баланс AR внутри периода завышен на сумму",
+        "statement": f"строки платежа {pay['payment_id']} отнесены к периоду после "
+                     f"period_end при документе с настоящей датой",
     }
     mutation = {
         "issue_id": issue_id,
         "type": "period_cutoff",
         "causal_change": f"ledger rows of payment {pay['payment_id']} re-dated from {old_ts} "
-                         f"to {_iso(new_ts)} (across period_end); payment document unchanged",
+                         f"to {_iso(new_ts)}; payment document unchanged",
         "before": {"rows_timestamp": old_ts, "payment_document_timestamp": old_ts},
         "after": {"rows_timestamp": _iso(new_ts), "payment_document_timestamp": old_ts},
         "expected_amount_minor": amount,
+        "currency": pay["currency"],
+        "effect_imbalance": 0,
+        "effect_ar_diff": ar_base,  # кредит дебеторки вышел из периода -> AR +amount
         "affected_ids": issue["affected_ids"],
     }
     return issue, mutation
 
 
-# --------------------------------------------------------------------------- #
-# partial allocation: пропущенное/частичное распределение платежа
-# --------------------------------------------------------------------------- #
 def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments: list[dict],
                                period_start: datetime, period_end: datetime,
-                               exclude: set[str] | None = None) -> tuple[dict, dict]:
-    """Документ платежа остаётся с полной суммой, обе строки журнала уменьшены.
-
-    Книги остаются сбалансированными (уменьшены и дебет кассы, и кредит
-    дебеторки), но дебиторка внутри периода завышена ровно на недостающую
-    сумму. Расхождение доказуемо по открытой паре «платёж ↔ строки журнала»
-    и по сверке «платежи по счёту = погашения дебеторки».
-    """
+                               exclude: set[str] | None, fx: FxTable,
+                               policy_day: date) -> tuple[dict, dict]:
+    """Документ платежа полон, обе строки журнала уменьшены на недостающую сумму."""
     by_payment: dict[str, list[dict]] = {}
     for row in ledger:
         if row["payment_id"]:
@@ -549,23 +612,28 @@ def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments:
         rows = by_payment.get(pay["payment_id"], [])
         if pay["payment_id"] in excluded or len(rows) != 2:
             continue
+        cash_row = next((r for r in rows if r["account"] == CASH), None)
+        ar_row = next((r for r in rows if r["account"] == AR), None)
+        if cash_row is None or ar_row is None:
+            continue
+        # частичное распределение живёт только внутри одной валюты (иначе путается с fx)
+        if not (cash_row["currency"] == ar_row["currency"] == pay["currency"]):
+            continue
         ts = datetime.fromisoformat(pay["timestamp"])
-        allocated = sum(int(r["credit_minor"]) for r in rows if r["account"] == AR)
         if not (period_start <= ts <= period_end):
             continue
-        if allocated != int(pay["amount_minor"]):
-            continue  # платеж уже мутирован другим типом
-        eligible.append((pay, rows))
+        if int(ar_row["credit_minor"]) != int(pay["amount_minor"]):
+            continue  # уже мутирован
+        eligible.append((pay, rows, cash_row, ar_row))
     if not eligible:
         raise EpisodeError("no eligible payment for partial_allocation")
-    pay, rows = eligible[rng.randrange(len(eligible))]
+    pay, rows, cash_row, ar_row = eligible[rng.randrange(len(eligible))]
 
-    cash_row = next(r for r in rows if r["account"] == CASH)
-    ar_row = next(r for r in rows if r["account"] == AR)
     total = int(pay["amount_minor"])
     delta = min(max(1, total * rng.randrange(10, 45) // 100), total - 1)
     cash_row["debit_minor"] = int(cash_row["debit_minor"]) - delta
     ar_row["credit_minor"] = int(ar_row["credit_minor"]) - delta
+    delta_base = fx.convert(delta, pay["currency"], "USD", policy_day)
 
     issue_id = "iss_partial_0001"
     issue = {
@@ -581,8 +649,8 @@ def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments:
             [f"payment:{pay['payment_id']}", f"ledger:{cash_row['row_id']}",
              f"ledger:{ar_row['row_id']}"],
         ],
-        "statement": f"платёж {pay['payment_id']} распределён в журнале на "
-                     f"{total - delta} при документе на {total}: недостаёт {delta}",
+        "statement": f"платёж {pay['payment_id']} распределён в журнале на {total - delta} "
+                     f"при документе на {total}: недостаёт {delta}",
     }
     mutation = {
         "issue_id": issue_id,
@@ -592,16 +660,101 @@ def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments:
         "before": {"payment_amount_minor": total, "ledger_allocated_minor": total},
         "after": {"payment_amount_minor": total, "ledger_allocated_minor": total - delta},
         "expected_amount_minor": delta,
+        "currency": pay["currency"],
+        "effect_imbalance": 0,          # обе стороны уменьшены одинаково
+        "effect_ar_diff": delta_base,   # кредит уменьшен -> AR в периоде завышен
+        "affected_ids": issue["affected_ids"],
+    }
+    return issue, mutation
+
+
+def _inject_fx_rate(rng: random.Random, ledger: list[dict], payments: list[dict],
+                    exclude: set[str] | None, fx: FxTable, policy_day: date,
+                    base: str) -> tuple[dict, dict]:
+    """Конвертированная строка кросс-валютного платежа посчитана не по policy-курсу."""
+    by_payment: dict[str, list[dict]] = {}
+    for row in ledger:
+        if row["payment_id"]:
+            by_payment.setdefault(row["payment_id"], []).append(row)
+
+    excluded = exclude or set()
+    eligible = []
+    for pay in payments:
+        rows = by_payment.get(pay["payment_id"], [])
+        if pay["payment_id"] in excluded or len(rows) != 2:
+            continue
+        ar_row = next((r for r in rows if r["account"] == AR), None)
+        if ar_row is None:
+            continue
+        # кросс-валютный = документ в чужой валюте, постинг в базовой
+        if pay["currency"] == base or ar_row["currency"] != base:
+            continue
+        if int(ar_row["credit_minor"]) != fx.convert(int(pay["amount_minor"]),
+                                                     pay["currency"], base, policy_day):
+            continue  # уже мутирован
+        eligible.append((pay, rows, ar_row))
+    if not eligible:
+        raise EpisodeError("no eligible cross-currency payment for fx_rate")
+    pay, rows, ar_row = eligible[rng.randrange(len(eligible))]
+
+    correct = int(ar_row["credit_minor"])
+    other_days = [d for d in fx.dates if d != policy_day]
+    rng.shuffle(other_days)
+    wrong = correct
+    used_day = None
+    for day in other_days:
+        candidate = fx.convert(int(pay["amount_minor"]), pay["currency"], base, day)
+        if candidate != correct:
+            wrong, used_day = candidate, day
+            break
+    if used_day is None:  # котировки совпали -> фиксируем отклонение явно
+        wrong = correct + max(1, correct // 200)
+        used_day = other_days[0]
+    delta = wrong - correct  # подписанный эффект в базовой валюте
+    ar_row["credit_minor"] = wrong
+
+    cash_row = next(r for r in rows if r["account"] == CASH)
+    policy_date = policy_day.isoformat()
+    src, tgt = pay["currency"], base
+    issue_id = "iss_fx_0001"
+    issue = {
+        "issue_id": issue_id,
+        "type": "fx_rate",
+        "affected_ids": sorted([pay["payment_id"], cash_row["row_id"], ar_row["row_id"]]),
+        "expected_amount_minor": abs(delta),
+        "currency": base,
+        "amount_tolerance_minor": 0,
+        "evidence_sets": [
+            [f"payment:{pay['payment_id']}", f"ledger:{ar_row['row_id']}",
+             f"fx:{policy_date}:{src}:{tgt}", "policy:fx_rate_date"],
+            [f"payment:{pay['payment_id']}", f"ledger:{cash_row['row_id']}",
+             f"ledger:{ar_row['row_id']}", "policy:fx_rate_date"],
+        ],
+        "statement": f"платёж {pay['payment_id']} ({src}) конвертирован по курсу на "
+                     f"{used_day.isoformat()} вместо policy-даты {policy_date}: "
+                     f"расхождение {abs(delta)} {base}",
+    }
+    mutation = {
+        "issue_id": issue_id,
+        "type": "fx_rate",
+        "causal_change": f"AR row {ar_row['row_id']} of payment {pay['payment_id']} "
+                         f"recomputed with rate of {used_day.isoformat()} instead of "
+                         f"policy date {policy_date}",
+        "before": {"ar_credit_minor": correct, "rate_date": policy_date},
+        "after": {"ar_credit_minor": wrong, "rate_date": used_day.isoformat()},
+        "expected_amount_minor": abs(delta),
+        "currency": base,
+        "effect_imbalance": -delta,   # лишний/недостающий кредит
+        "effect_ar_diff": -delta,     # кредит изменил баланс AR в периоде
         "affected_ids": issue["affected_ids"],
     }
     return issue, mutation
 
 
 # --------------------------------------------------------------------------- #
-# loading a saved episode
+# loading / saving
 # --------------------------------------------------------------------------- #
 def load_episode(episode_dir: str | Path) -> dict[str, dict[str, str]]:
-    """Read open + closed files from a saved episode directory."""
     root = Path(episode_dir)
     open_names = ["manifest.json", "ledger.csv", "invoices.jsonl", "payments.jsonl",
                   "fx.csv", "policy.json"]
@@ -617,7 +770,6 @@ def load_episode(episode_dir: str | Path) -> dict[str, dict[str, str]]:
 
 
 def save_episode(files: dict[str, dict[str, str]], out_dir: str | Path) -> Path:
-    """Write an episode to disk: open/ and closed/ subdirectories."""
     root = Path(out_dir)
     (root / "open").mkdir(parents=True, exist_ok=True)
     for name, text in files["open"].items():

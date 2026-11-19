@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import random
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Callable, Iterable
 
 from .env import AuditEnv
@@ -188,7 +189,7 @@ class RandomExplorerPolicy(BasePolicy):
 # 2. simple reconciliation
 # --------------------------------------------------------------------------- #
 class ReconciliationPolicy(BasePolicy):
-    """Finds the two implemented issue types from records alone."""
+    """Finds all four implemented issue types from records alone."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -197,11 +198,16 @@ class ReconciliationPolicy(BasePolicy):
         self.stage = "collect"
         self.submitted = False
 
+    SEQUENCE = ("payments", "fx")
+
     def act(self, obs: dict) -> dict:
         if self.stage == "collect":
             self.pager.feed(obs)
-            if self.pager.pending is None and "payments" not in self.pager.finished:
-                self.pager.start("payments")
+            if self.pager.pending is None:
+                for table in self.SEQUENCE:
+                    if table not in self.pager.finished:
+                        self.pager.start(table)
+                        break
             if self.pager.pending:
                 return self.pager.action()
             self.stage = "submit"
@@ -214,8 +220,20 @@ class ReconciliationPolicy(BasePolicy):
         findings: list[dict] = []
         assert self.manifest is not None
         period = (self.manifest["period_start"], self.manifest["period_end"])
+        policy_day = self.manifest["period_end"][:10]
         rows = self.pager.rows["ledger"]
         payments = self.pager.rows["payments"]
+        rates = {(r["date"], r["source_currency"], r["target_currency"]): Decimal(r["rate"])
+                 for r in self.pager.rows["fx"]}
+
+        def convert(amount, src: str, tgt: str):
+            """Курс policy-даты из fx.csv; None, если пара не опубликована."""
+            if src == tgt:
+                return int(amount)
+            rate = rates.get((policy_day, src, tgt))
+            if rate is None:
+                return None
+            return int((Decimal(int(amount)) * rate).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
         # (a) duplicates: identical in every field except row_id
         seen: dict[tuple, str] = {}
@@ -236,7 +254,7 @@ class ReconciliationPolicy(BasePolicy):
             else:
                 seen[key] = row["row_id"]
 
-        # (b) period cutoff: payment document inside the period, ledger rows outside
+        # (b..d) платежи: сдвиг периода / кросс-валютный курс / частичное распределение
         by_payment: dict[str, list[dict]] = {}
         for row in rows:
             if row["payment_id"]:
@@ -262,12 +280,38 @@ class ReconciliationPolicy(BasePolicy):
                 })
                 continue
 
-            # (c) частичное распределение: сумма погашений в журнале != документу
+            ar_row = next((r for r in pay_rows if r["account"].startswith("1200")), None)
+            cash_row = next((r for r in pay_rows if r["account"].startswith("1010")), None)
+            if ar_row is None or cash_row is None:
+                continue
+
+            # (c) кросс-валютный платёж: документ в чужой валюте, постинг в базовой
+            if ar_row["currency"] != pay["currency"]:
+                expected = convert(pay["amount_minor"], pay["currency"], ar_row["currency"])
+                if expected is None:
+                    continue
+                actual = int(ar_row["credit_minor"])
+                if actual != expected:
+                    findings.append({
+                        "type": "fx_rate",
+                        "affected_ids": sorted([pay["payment_id"], cash_row["row_id"],
+                                                ar_row["row_id"]]),
+                        "claimed_amount_minor": abs(actual - expected),
+                        "currency": ar_row["currency"],
+                        "evidence_ids": [f"payment:{pay['payment_id']}",
+                                         f"ledger:{ar_row['row_id']}",
+                                         f"fx:{policy_day}:{pay['currency']}:{ar_row['currency']}",
+                                         "policy:fx_rate_date"],
+                        "explanation": f"платёж {pay['payment_id']} ({pay['currency']}) "
+                                       f"конвертирован в {ar_row['currency']}: по policy-курсу "
+                                       f"ожидалось {expected}, в журнале {actual}",
+                    })
+                continue
+
+            # (d) частичное распределение (одна валюта: иначе это fx)
             allocated = sum(int(r["credit_minor"]) for r in pay_rows
                             if r["account"].startswith("1200"))
             if allocated != int(pay["amount_minor"]):
-                ar_row = next((r for r in pay_rows if r["account"].startswith("1200")),
-                              pay_rows[0])
                 findings.append({
                     "type": "partial_allocation",
                     "affected_ids": sorted([pay["payment_id"]] + [r["row_id"] for r in pay_rows]),

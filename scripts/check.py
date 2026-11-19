@@ -106,10 +106,11 @@ def main() -> int:
     sweep_config("парные (2 типа)", {"n_invoices": 12,
                                      "issue_types": ["duplicate_entry", "period_cutoff"],
                                      "n_issues": 2}, seeds)
-    sweep_config("три типа в одном эпизоде (S1/S2 — 20.11)",
-                 {"n_invoices": 20,
-                  "issue_types": ["duplicate_entry", "period_cutoff", "partial_allocation"],
-                  "n_issues": 3}, seeds)
+    sweep_config("четыре типа в одном эпизоде",
+                 {"n_invoices": 25,
+                  "issue_types": ["duplicate_entry", "period_cutoff",
+                                  "partial_allocation", "fx_rate"],
+                  "n_issues": 4}, seeds)
 
     # 3. атаки -------------------------------------------------------------- #
     print("\n3) Атакующие политики")
