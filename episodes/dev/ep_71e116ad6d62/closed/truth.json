@@ -1,0 +1,58 @@
+{
+  "episode_id": "ep_71e116ad6d62",
+  "issues": [
+    {
+      "issue_id": "iss_s1_fx_0001",
+      "type": "fx_rate",
+      "affected_ids": [
+        "PAY-2026-0058",
+        "row_00245",
+        "row_00246"
+      ],
+      "expected_amount_minor": 46,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0058",
+          "ledger:row_00246",
+          "fx:2026-03-31:KZT:USD",
+          "policy:fx_rate_date"
+        ],
+        [
+          "payment:PAY-2026-0058",
+          "ledger:row_00245",
+          "ledger:row_00246",
+          "policy:fx_rate_date"
+        ]
+      ],
+      "statement": "S1: платёж PAY-2026-0058 (KZT) у границы периода конвертирован по курсу на 2026-03-12 вместо 2026-03-31: расхождение 46 USD"
+    },
+    {
+      "issue_id": "iss_s1_cutoff_0001",
+      "type": "period_cutoff",
+      "affected_ids": [
+        "PAY-2026-0058",
+        "row_00245",
+        "row_00246"
+      ],
+      "expected_amount_minor": 1989300,
+      "currency": "KZT",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0058",
+          "ledger:row_00246",
+          "policy:period"
+        ],
+        [
+          "payment:PAY-2026-0058",
+          "ledger:row_00245",
+          "ledger:row_00246",
+          "policy:period"
+        ]
+      ],
+      "statement": "строки платежа PAY-2026-0058 отнесены к периоду после period_end при документе с настоящей датой"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "episode_id": "ep_d1728b2241a0",
+  "issues": [
+    {
+      "issue_id": "iss_period_0001",
+      "type": "period_cutoff",
+      "affected_ids": [
+        "PAY-2026-0005",
+        "row_00163",
+        "row_00164"
+      ],
+      "expected_amount_minor": 3939900,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0005",
+          "ledger:row_00164",
+          "policy:period"
+        ],
+        [
+          "payment:PAY-2026-0005",
+          "ledger:row_00163",
+          "ledger:row_00164",
+          "policy:period"
+        ]
+      ],
+      "statement": "строки платежа PAY-2026-0005 отнесены к периоду после period_end при документе с настоящей датой"
+    }
+  ]
+}

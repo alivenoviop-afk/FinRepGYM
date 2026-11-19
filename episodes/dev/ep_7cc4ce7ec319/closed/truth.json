@@ -1,0 +1,56 @@
+{
+  "episode_id": "ep_7cc4ce7ec319",
+  "issues": [
+    {
+      "issue_id": "iss_s2_partial_0001",
+      "type": "partial_allocation",
+      "affected_ids": [
+        "PAY-2026-0004",
+        "row_00139",
+        "row_00140"
+      ],
+      "expected_amount_minor": 92639,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0004",
+          "ledger:row_00140",
+          "invoice:INV-2026-0005"
+        ],
+        [
+          "payment:PAY-2026-0004",
+          "ledger:row_00139",
+          "ledger:row_00140"
+        ]
+      ],
+      "statement": "S2: платёж PAY-2026-0004 (EUR) распределён в журнале на 524955 USD при документе, эквивалент 617594 USD: недостаёт 92639"
+    },
+    {
+      "issue_id": "iss_s2_cutoff_0001",
+      "type": "period_cutoff",
+      "affected_ids": [
+        "PAY-2026-0004",
+        "row_00139",
+        "row_00140"
+      ],
+      "expected_amount_minor": 608400,
+      "currency": "EUR",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0004",
+          "ledger:row_00140",
+          "policy:period"
+        ],
+        [
+          "payment:PAY-2026-0004",
+          "ledger:row_00139",
+          "ledger:row_00140",
+          "policy:period"
+        ]
+      ],
+      "statement": "строки платежа PAY-2026-0004 отнесены к периоду после period_end при документе с настоящей датой"
+    }
+  ]
+}

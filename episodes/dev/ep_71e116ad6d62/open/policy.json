@@ -1,0 +1,7 @@
+{
+  "fx_rate_date": "period_end",
+  "period_boundary": "inclusive: period_start 00:00:00 .. period_end 23:59:59 in episode timezone",
+  "rounding": "all amounts are integers in minor units; FX rates are decimal strings; conversion rounds half-up to the target currency's minor unit",
+  "comparison_rule": "amounts in different currencies must be converted with fx.csv before comparison",
+  "evidence_rule": "a finding must cite record ids that exist; at least one full allowed evidence set is required by the evaluator"
+}

@@ -1,0 +1,141 @@
+{
+  "generator": "audit-rl",
+  "schema_version": "audit-rl/1.0",
+  "seed": 2009,
+  "config": {
+    "n_invoices": 60,
+    "base_currency": "USD",
+    "currencies": [
+      "USD",
+      "EUR",
+      "KZT"
+    ],
+    "minor_unit_digits": 2,
+    "timezone": "Asia/Almaty",
+    "utc_offset": "+05:00",
+    "period_start": "2026-01-01",
+    "period_end": "2026-03-31",
+    "issue_types": [],
+    "n_issues": 0,
+    "scenarios": [
+      "S1"
+    ],
+    "clean": false,
+    "distractors": true
+  },
+  "episode_id": "ep_71e116ad6d62",
+  "stages": [
+    {
+      "stage": "history",
+      "detail": "balanced books verified in base currency",
+      "invariants": {
+        "sum_debits": 140110220,
+        "sum_credits": 140110220,
+        "books_balanced": true,
+        "ar_balance_in_period": 34236959,
+        "invoiced_in_period": 86102479,
+        "paid_in_period": 51865520,
+        "ar_matches_documents": true,
+        "base_currency": "USD"
+      }
+    },
+    {
+      "stage": "mutation",
+      "issue_id": "iss_s1_fx_0001",
+      "type": "fx_rate",
+      "scenario": "S1",
+      "causal_change": "scenario S1: AR row row_00246 of payment PAY-2026-0058 recomputed with rate of 2026-03-12 instead of policy date 2026-03-31"
+    },
+    {
+      "stage": "mutation",
+      "issue_id": "iss_s1_cutoff_0001",
+      "type": "period_cutoff",
+      "scenario": "S1",
+      "causal_change": "scenario S1: rows of payment PAY-2026-0058 re-dated from 2026-03-31T09:59:59+05:00 to 2026-04-02T11:59:59+05:00; document unchanged"
+    },
+    {
+      "stage": "verify",
+      "invariants_after": {
+        "sum_debits": 140110220,
+        "sum_credits": 140110266,
+        "books_balanced": false,
+        "ar_balance_in_period": 34240685,
+        "invoiced_in_period": 86102479,
+        "paid_in_period": 51865520,
+        "ar_matches_documents": false,
+        "base_currency": "USD"
+      },
+      "declared_discrepancies": {
+        "books_imbalance": -46,
+        "declared_imbalance": -46,
+        "ar_period_discrepancy": 3726,
+        "declared_ar_discrepancy": 3726,
+        "verified": true
+      }
+    }
+  ],
+  "mutations": [
+    {
+      "issue_id": "iss_s1_fx_0001",
+      "type": "fx_rate",
+      "causal_change": "scenario S1: AR row row_00246 of payment PAY-2026-0058 recomputed with rate of 2026-03-12 instead of policy date 2026-03-31",
+      "before": {
+        "ar_credit_minor": 3726,
+        "rate_date": "2026-03-31"
+      },
+      "after": {
+        "ar_credit_minor": 3772,
+        "rate_date": "2026-03-12"
+      },
+      "expected_amount_minor": 46,
+      "currency": "USD",
+      "effect_imbalance": -46,
+      "effect_ar_diff": -46,
+      "affected_ids": [
+        "PAY-2026-0058",
+        "row_00245",
+        "row_00246"
+      ]
+    },
+    {
+      "issue_id": "iss_s1_cutoff_0001",
+      "type": "period_cutoff",
+      "causal_change": "scenario S1: rows of payment PAY-2026-0058 re-dated from 2026-03-31T09:59:59+05:00 to 2026-04-02T11:59:59+05:00; document unchanged",
+      "before": {
+        "rows_timestamp": "2026-03-31T09:59:59+05:00"
+      },
+      "after": {
+        "rows_timestamp": "2026-04-02T11:59:59+05:00"
+      },
+      "expected_amount_minor": 1989300,
+      "currency": "KZT",
+      "effect_imbalance": 0,
+      "effect_ar_diff": 3772,
+      "affected_ids": [
+        "PAY-2026-0058",
+        "row_00245",
+        "row_00246"
+      ]
+    }
+  ],
+  "invariants_before": {
+    "sum_debits": 140110220,
+    "sum_credits": 140110220,
+    "books_balanced": true,
+    "ar_balance_in_period": 34236959,
+    "invoiced_in_period": 86102479,
+    "paid_in_period": 51865520,
+    "ar_matches_documents": true,
+    "base_currency": "USD"
+  },
+  "invariants_after": {
+    "sum_debits": 140110220,
+    "sum_credits": 140110266,
+    "books_balanced": false,
+    "ar_balance_in_period": 34240685,
+    "invoiced_in_period": 86102479,
+    "paid_in_period": 51865520,
+    "ar_matches_documents": false,
+    "base_currency": "USD"
+  }
+}

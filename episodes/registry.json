@@ -1,0 +1,457 @@
+{
+  "schema_version": "audit-rl/1.0",
+  "note": "открытые train/dev эпизоды; закрытые эпизоды жюри генерирует своими seed из наших осей конфигурации",
+  "episodes": [
+    {
+      "episode_id": "ep_9ce2010caa6a",
+      "split": "train",
+      "seed": 1001,
+      "config": {
+        "n_invoices": 60,
+        "clean": true,
+        "n_issues": 0,
+        "scenarios": []
+      },
+      "path": "episodes/train/ep_9ce2010caa6a",
+      "n_records": 232,
+      "n_documents": 111,
+      "n_issues": 0,
+      "issue_types": [],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_3a155dec1b5f",
+      "split": "train",
+      "seed": 1002,
+      "config": {
+        "n_invoices": 70,
+        "clean": true,
+        "n_issues": 0,
+        "scenarios": [],
+        "utc_offset": "+03:00"
+      },
+      "path": "episodes/train/ep_3a155dec1b5f",
+      "n_records": 300,
+      "n_documents": 141,
+      "n_issues": 0,
+      "issue_types": [],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_2ccaa7897f27",
+      "split": "train",
+      "seed": 1003,
+      "config": {
+        "n_invoices": 60,
+        "issue_types": [
+          "duplicate_entry"
+        ],
+        "n_issues": 1
+      },
+      "path": "episodes/train/ep_2ccaa7897f27",
+      "n_records": 247,
+      "n_documents": 116,
+      "n_issues": 1,
+      "issue_types": [
+        "duplicate_entry"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_dd90ea09ad61",
+      "split": "train",
+      "seed": 1004,
+      "config": {
+        "n_invoices": 65,
+        "issue_types": [
+          "partial_allocation"
+        ],
+        "n_issues": 1
+      },
+      "path": "episodes/train/ep_dd90ea09ad61",
+      "n_records": 266,
+      "n_documents": 125,
+      "n_issues": 1,
+      "issue_types": [
+        "partial_allocation"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_86cab9ee963c",
+      "split": "train",
+      "seed": 1005,
+      "config": {
+        "n_invoices": 70,
+        "issue_types": [
+          "fx_rate"
+        ],
+        "n_issues": 1
+      },
+      "path": "episodes/train/ep_86cab9ee963c",
+      "n_records": 316,
+      "n_documents": 142,
+      "n_issues": 1,
+      "issue_types": [
+        "fx_rate"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_d1728b2241a0",
+      "split": "train",
+      "seed": 1006,
+      "config": {
+        "n_invoices": 75,
+        "issue_types": [
+          "period_cutoff"
+        ],
+        "n_issues": 1
+      },
+      "path": "episodes/train/ep_d1728b2241a0",
+      "n_records": 328,
+      "n_documents": 153,
+      "n_issues": 1,
+      "issue_types": [
+        "period_cutoff"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_5cebe8d30b4f",
+      "split": "train",
+      "seed": 1007,
+      "config": {
+        "n_invoices": 60,
+        "issue_types": [
+          "duplicate_entry",
+          "period_cutoff"
+        ],
+        "n_issues": 2
+      },
+      "path": "episodes/train/ep_5cebe8d30b4f",
+      "n_records": 275,
+      "n_documents": 125,
+      "n_issues": 2,
+      "issue_types": [
+        "duplicate_entry",
+        "period_cutoff"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_38053f39ec74",
+      "split": "train",
+      "seed": 1008,
+      "config": {
+        "n_invoices": 65,
+        "issue_types": [
+          "partial_allocation",
+          "fx_rate"
+        ],
+        "n_issues": 2
+      },
+      "path": "episodes/train/ep_38053f39ec74",
+      "n_records": 264,
+      "n_documents": 123,
+      "n_issues": 2,
+      "issue_types": [
+        "fx_rate",
+        "partial_allocation"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_7a3826c15912",
+      "split": "train",
+      "seed": 1009,
+      "config": {
+        "n_invoices": 70,
+        "issue_types": [],
+        "n_issues": 0,
+        "scenarios": [
+          "S1"
+        ]
+      },
+      "path": "episodes/train/ep_7a3826c15912",
+      "n_records": 298,
+      "n_documents": 140,
+      "n_issues": 2,
+      "issue_types": [
+        "fx_rate",
+        "period_cutoff"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_98c3f37c78f1",
+      "split": "train",
+      "seed": 1010,
+      "config": {
+        "n_invoices": 75,
+        "issue_types": [],
+        "n_issues": 0,
+        "scenarios": [
+          "S2"
+        ]
+      },
+      "path": "episodes/train/ep_98c3f37c78f1",
+      "n_records": 342,
+      "n_documents": 160,
+      "n_issues": 2,
+      "issue_types": [
+        "partial_allocation",
+        "period_cutoff"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_70db46c72b22",
+      "split": "dev",
+      "seed": 2001,
+      "config": {
+        "n_invoices": 80,
+        "clean": true,
+        "n_issues": 0,
+        "scenarios": [],
+        "utc_offset": "-07:00"
+      },
+      "path": "episodes/dev/ep_70db46c72b22",
+      "n_records": 328,
+      "n_documents": 153,
+      "n_issues": 0,
+      "issue_types": [],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_15078028b0c3",
+      "split": "dev",
+      "seed": 2002,
+      "config": {
+        "n_invoices": 55,
+        "issue_types": [
+          "duplicate_entry"
+        ],
+        "n_issues": 1
+      },
+      "path": "episodes/dev/ep_15078028b0c3",
+      "n_records": 225,
+      "n_documents": 104,
+      "n_issues": 1,
+      "issue_types": [
+        "duplicate_entry"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_1bae8ad0ca09",
+      "split": "dev",
+      "seed": 2003,
+      "config": {
+        "n_invoices": 60,
+        "issue_types": [
+          "partial_allocation"
+        ],
+        "n_issues": 1
+      },
+      "path": "episodes/dev/ep_1bae8ad0ca09",
+      "n_records": 264,
+      "n_documents": 118,
+      "n_issues": 1,
+      "issue_types": [
+        "partial_allocation"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_81d83ab324d7",
+      "split": "dev",
+      "seed": 2004,
+      "config": {
+        "n_invoices": 65,
+        "issue_types": [
+          "fx_rate"
+        ],
+        "n_issues": 1
+      },
+      "path": "episodes/dev/ep_81d83ab324d7",
+      "n_records": 266,
+      "n_documents": 119,
+      "n_issues": 1,
+      "issue_types": [
+        "fx_rate"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_d22a026cf718",
+      "split": "dev",
+      "seed": 2005,
+      "config": {
+        "n_invoices": 70,
+        "issue_types": [
+          "period_cutoff"
+        ],
+        "n_issues": 1
+      },
+      "path": "episodes/dev/ep_d22a026cf718",
+      "n_records": 312,
+      "n_documents": 144,
+      "n_issues": 1,
+      "issue_types": [
+        "period_cutoff"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_c06685be2720",
+      "split": "dev",
+      "seed": 2006,
+      "config": {
+        "n_invoices": 60,
+        "issue_types": [
+          "duplicate_entry",
+          "partial_allocation"
+        ],
+        "n_issues": 2
+      },
+      "path": "episodes/dev/ep_c06685be2720",
+      "n_records": 261,
+      "n_documents": 123,
+      "n_issues": 2,
+      "issue_types": [
+        "duplicate_entry",
+        "partial_allocation"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_d3376e30b5b4",
+      "split": "dev",
+      "seed": 2007,
+      "config": {
+        "n_invoices": 65,
+        "issue_types": [
+          "fx_rate",
+          "period_cutoff"
+        ],
+        "n_issues": 2
+      },
+      "path": "episodes/dev/ep_d3376e30b5b4",
+      "n_records": 298,
+      "n_documents": 141,
+      "n_issues": 2,
+      "issue_types": [
+        "fx_rate",
+        "period_cutoff"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_559ae03f91be",
+      "split": "dev",
+      "seed": 2008,
+      "config": {
+        "n_invoices": 70,
+        "issue_types": [
+          "duplicate_entry",
+          "fx_rate"
+        ],
+        "n_issues": 2
+      },
+      "path": "episodes/dev/ep_559ae03f91be",
+      "n_records": 309,
+      "n_documents": 144,
+      "n_issues": 2,
+      "issue_types": [
+        "duplicate_entry",
+        "fx_rate"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_71e116ad6d62",
+      "split": "dev",
+      "seed": 2009,
+      "config": {
+        "n_invoices": 60,
+        "issue_types": [],
+        "n_issues": 0,
+        "scenarios": [
+          "S1"
+        ]
+      },
+      "path": "episodes/dev/ep_71e116ad6d62",
+      "n_records": 246,
+      "n_documents": 118,
+      "n_issues": 2,
+      "issue_types": [
+        "fx_rate",
+        "period_cutoff"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    },
+    {
+      "episode_id": "ep_7cc4ce7ec319",
+      "split": "dev",
+      "seed": 2010,
+      "config": {
+        "n_invoices": 65,
+        "issue_types": [],
+        "n_issues": 0,
+        "scenarios": [
+          "S2"
+        ]
+      },
+      "path": "episodes/dev/ep_7cc4ce7ec319",
+      "n_records": 286,
+      "n_documents": 131,
+      "n_issues": 2,
+      "issue_types": [
+        "partial_allocation",
+        "period_cutoff"
+      ],
+      "oracle_f1": 1.0,
+      "recon_fp": 0,
+      "recon_fn": 0
+    }
+  ]
+}

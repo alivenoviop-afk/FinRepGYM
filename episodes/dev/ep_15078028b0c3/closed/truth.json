@@ -1,0 +1,28 @@
+{
+  "episode_id": "ep_15078028b0c3",
+  "issues": [
+    {
+      "issue_id": "iss_duplicate_0001",
+      "type": "duplicate_entry",
+      "affected_ids": [
+        "row_00100",
+        "row_00225"
+      ],
+      "expected_amount_minor": 640600,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "ledger:row_00225",
+          "ledger:row_00100",
+          "invoice:INV-2026-0050"
+        ],
+        [
+          "ledger:row_00225",
+          "ledger:row_00100"
+        ]
+      ],
+      "statement": "строка выручки продублирована: две идентичные записи на одну счёт-фактуру, равенство дебет=кредит нарушено на сумму строки"
+    }
+  ]
+}

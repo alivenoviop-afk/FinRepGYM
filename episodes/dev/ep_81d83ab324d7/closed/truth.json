@@ -1,0 +1,32 @@
+{
+  "episode_id": "ep_81d83ab324d7",
+  "issues": [
+    {
+      "issue_id": "iss_fx_0001",
+      "type": "fx_rate",
+      "affected_ids": [
+        "PAY-2026-0028",
+        "row_00199",
+        "row_00200"
+      ],
+      "expected_amount_minor": 7281,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0028",
+          "ledger:row_00200",
+          "fx:2026-03-31:EUR:USD",
+          "policy:fx_rate_date"
+        ],
+        [
+          "payment:PAY-2026-0028",
+          "ledger:row_00199",
+          "ledger:row_00200",
+          "policy:fx_rate_date"
+        ]
+      ],
+      "statement": "платёж PAY-2026-0028 (EUR) конвертирован по курсу на 2026-02-19 вместо policy-даты 2026-03-31: расхождение 7281 USD"
+    }
+  ]
+}

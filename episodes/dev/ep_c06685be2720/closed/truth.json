@@ -1,0 +1,53 @@
+{
+  "episode_id": "ep_c06685be2720",
+  "issues": [
+    {
+      "issue_id": "iss_duplicate_0001",
+      "type": "duplicate_entry",
+      "affected_ids": [
+        "row_00020",
+        "row_00261"
+      ],
+      "expected_amount_minor": 3495500,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "ledger:row_00261",
+          "ledger:row_00020",
+          "invoice:INV-2026-0010"
+        ],
+        [
+          "ledger:row_00261",
+          "ledger:row_00020"
+        ]
+      ],
+      "statement": "строка выручки продублирована: две идентичные записи на одну счёт-фактуру, равенство дебет=кредит нарушено на сумму строки"
+    },
+    {
+      "issue_id": "iss_partial_0001",
+      "type": "partial_allocation",
+      "affected_ids": [
+        "PAY-2026-0012",
+        "row_00147",
+        "row_00148"
+      ],
+      "expected_amount_minor": 511140,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0012",
+          "ledger:row_00148",
+          "invoice:INV-2026-0012"
+        ],
+        [
+          "payment:PAY-2026-0012",
+          "ledger:row_00147",
+          "ledger:row_00148"
+        ]
+      ],
+      "statement": "платёж PAY-2026-0012 распределён в журнале на 3139860 при документе на 3651000: недостаёт 511140"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "episode_id": "ep_5cebe8d30b4f",
+  "issues": [
+    {
+      "issue_id": "iss_duplicate_0001",
+      "type": "duplicate_entry",
+      "affected_ids": [
+        "row_00098",
+        "row_00275"
+      ],
+      "expected_amount_minor": 822000,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "ledger:row_00275",
+          "ledger:row_00098",
+          "invoice:INV-2026-0049"
+        ],
+        [
+          "ledger:row_00275",
+          "ledger:row_00098"
+        ]
+      ],
+      "statement": "строка выручки продублирована: две идентичные записи на одну счёт-фактуру, равенство дебет=кредит нарушено на сумму строки"
+    },
+    {
+      "issue_id": "iss_period_0001",
+      "type": "period_cutoff",
+      "affected_ids": [
+        "PAY-2026-0020",
+        "row_00169",
+        "row_00170"
+      ],
+      "expected_amount_minor": 822000,
+      "currency": "KZT",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0020",
+          "ledger:row_00170",
+          "policy:period"
+        ],
+        [
+          "payment:PAY-2026-0020",
+          "ledger:row_00169",
+          "ledger:row_00170",
+          "policy:period"
+        ]
+      ],
+      "statement": "строки платежа PAY-2026-0020 отнесены к периоду после period_end при документе с настоящей датой"
+    }
+  ]
+}

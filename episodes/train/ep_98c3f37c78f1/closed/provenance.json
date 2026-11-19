@@ -1,0 +1,139 @@
+{
+  "generator": "audit-rl",
+  "schema_version": "audit-rl/1.0",
+  "seed": 1010,
+  "config": {
+    "n_invoices": 75,
+    "base_currency": "USD",
+    "currencies": [
+      "USD",
+      "EUR",
+      "KZT"
+    ],
+    "minor_unit_digits": 2,
+    "timezone": "Asia/Almaty",
+    "utc_offset": "+05:00",
+    "period_start": "2026-01-01",
+    "period_end": "2026-03-31",
+    "issue_types": [],
+    "n_issues": 0,
+    "scenarios": [
+      "S2"
+    ],
+    "clean": false,
+    "distractors": true
+  },
+  "episode_id": "ep_98c3f37c78f1",
+  "stages": [
+    {
+      "stage": "history",
+      "detail": "balanced books verified in base currency",
+      "invariants": {
+        "sum_debits": 154402963,
+        "sum_credits": 154402963,
+        "books_balanced": true,
+        "ar_balance_in_period": 43544581,
+        "invoiced_in_period": 95997741,
+        "paid_in_period": 52453160,
+        "ar_matches_documents": true,
+        "base_currency": "USD"
+      }
+    },
+    {
+      "stage": "mutation",
+      "issue_id": "iss_s2_partial_0001",
+      "type": "partial_allocation",
+      "scenario": "S2",
+      "causal_change": "scenario S2: both ledger rows of payment PAY-2026-0011 reduced by 1480 USD while the document keeps its full amount"
+    },
+    {
+      "stage": "mutation",
+      "issue_id": "iss_s2_cutoff_0001",
+      "type": "period_cutoff",
+      "scenario": "S2",
+      "causal_change": "scenario S2: rows of payment PAY-2026-0011 re-dated from 2026-03-31T17:59:59+05:00 to 2026-04-02T11:59:59+05:00 after partial allocation; document unchanged"
+    },
+    {
+      "stage": "verify",
+      "invariants_after": {
+        "sum_debits": 154401483,
+        "sum_credits": 154401483,
+        "books_balanced": true,
+        "ar_balance_in_period": 43548281,
+        "invoiced_in_period": 95997741,
+        "paid_in_period": 52453160,
+        "ar_matches_documents": false,
+        "base_currency": "USD"
+      },
+      "declared_discrepancies": {
+        "books_imbalance": 0,
+        "declared_imbalance": 0,
+        "ar_period_discrepancy": 3700,
+        "declared_ar_discrepancy": 3700,
+        "verified": true
+      }
+    }
+  ],
+  "mutations": [
+    {
+      "issue_id": "iss_s2_partial_0001",
+      "type": "partial_allocation",
+      "causal_change": "scenario S2: both ledger rows of payment PAY-2026-0011 reduced by 1480 USD while the document keeps its full amount",
+      "before": {
+        "ledger_allocated_minor": 3700
+      },
+      "after": {
+        "ledger_allocated_minor": 2220
+      },
+      "expected_amount_minor": 1480,
+      "currency": "USD",
+      "effect_imbalance": 0,
+      "effect_ar_diff": 1480,
+      "affected_ids": [
+        "PAY-2026-0011",
+        "row_00173",
+        "row_00174"
+      ]
+    },
+    {
+      "issue_id": "iss_s2_cutoff_0001",
+      "type": "period_cutoff",
+      "causal_change": "scenario S2: rows of payment PAY-2026-0011 re-dated from 2026-03-31T17:59:59+05:00 to 2026-04-02T11:59:59+05:00 after partial allocation; document unchanged",
+      "before": {
+        "rows_timestamp": "2026-03-31T17:59:59+05:00"
+      },
+      "after": {
+        "rows_timestamp": "2026-04-02T11:59:59+05:00"
+      },
+      "expected_amount_minor": 1981557,
+      "currency": "KZT",
+      "effect_imbalance": 0,
+      "effect_ar_diff": 2220,
+      "affected_ids": [
+        "PAY-2026-0011",
+        "row_00173",
+        "row_00174"
+      ]
+    }
+  ],
+  "invariants_before": {
+    "sum_debits": 154402963,
+    "sum_credits": 154402963,
+    "books_balanced": true,
+    "ar_balance_in_period": 43544581,
+    "invoiced_in_period": 95997741,
+    "paid_in_period": 52453160,
+    "ar_matches_documents": true,
+    "base_currency": "USD"
+  },
+  "invariants_after": {
+    "sum_debits": 154401483,
+    "sum_credits": 154401483,
+    "books_balanced": true,
+    "ar_balance_in_period": 43548281,
+    "invoiced_in_period": 95997741,
+    "paid_in_period": 52453160,
+    "ar_matches_documents": false,
+    "base_currency": "USD"
+  }
+}

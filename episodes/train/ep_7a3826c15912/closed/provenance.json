@@ -1,0 +1,141 @@
+{
+  "generator": "audit-rl",
+  "schema_version": "audit-rl/1.0",
+  "seed": 1009,
+  "config": {
+    "n_invoices": 70,
+    "base_currency": "USD",
+    "currencies": [
+      "USD",
+      "EUR",
+      "KZT"
+    ],
+    "minor_unit_digits": 2,
+    "timezone": "Asia/Almaty",
+    "utc_offset": "+05:00",
+    "period_start": "2026-01-01",
+    "period_end": "2026-03-31",
+    "issue_types": [],
+    "n_issues": 0,
+    "scenarios": [
+      "S1"
+    ],
+    "clean": false,
+    "distractors": true
+  },
+  "episode_id": "ep_7a3826c15912",
+  "stages": [
+    {
+      "stage": "history",
+      "detail": "balanced books verified in base currency",
+      "invariants": {
+        "sum_debits": 241334915,
+        "sum_credits": 241334915,
+        "books_balanced": true,
+        "ar_balance_in_period": 33695273,
+        "invoiced_in_period": 133424048,
+        "paid_in_period": 99728775,
+        "ar_matches_documents": true,
+        "base_currency": "USD"
+      }
+    },
+    {
+      "stage": "mutation",
+      "issue_id": "iss_s1_fx_0001",
+      "type": "fx_rate",
+      "scenario": "S1",
+      "causal_change": "scenario S1: AR row row_00186 of payment PAY-2026-0019 recomputed with rate of 2026-02-05 instead of policy date 2026-03-31"
+    },
+    {
+      "stage": "mutation",
+      "issue_id": "iss_s1_cutoff_0001",
+      "type": "period_cutoff",
+      "scenario": "S1",
+      "causal_change": "scenario S1: rows of payment PAY-2026-0019 re-dated from 2026-03-17T14:01:00+05:00 to 2026-04-02T11:59:59+05:00; document unchanged"
+    },
+    {
+      "stage": "verify",
+      "invariants_after": {
+        "sum_debits": 241334915,
+        "sum_credits": 241334683,
+        "books_balanced": false,
+        "ar_balance_in_period": 33700086,
+        "invoiced_in_period": 133424048,
+        "paid_in_period": 99728775,
+        "ar_matches_documents": false,
+        "base_currency": "USD"
+      },
+      "declared_discrepancies": {
+        "books_imbalance": 232,
+        "declared_imbalance": 232,
+        "ar_period_discrepancy": 4813,
+        "declared_ar_discrepancy": 4813,
+        "verified": true
+      }
+    }
+  ],
+  "mutations": [
+    {
+      "issue_id": "iss_s1_fx_0001",
+      "type": "fx_rate",
+      "causal_change": "scenario S1: AR row row_00186 of payment PAY-2026-0019 recomputed with rate of 2026-02-05 instead of policy date 2026-03-31",
+      "before": {
+        "ar_credit_minor": 4813,
+        "rate_date": "2026-03-31"
+      },
+      "after": {
+        "ar_credit_minor": 4581,
+        "rate_date": "2026-02-05"
+      },
+      "expected_amount_minor": 232,
+      "currency": "USD",
+      "effect_imbalance": 232,
+      "effect_ar_diff": 232,
+      "affected_ids": [
+        "PAY-2026-0019",
+        "row_00185",
+        "row_00186"
+      ]
+    },
+    {
+      "issue_id": "iss_s1_cutoff_0001",
+      "type": "period_cutoff",
+      "causal_change": "scenario S1: rows of payment PAY-2026-0019 re-dated from 2026-03-17T14:01:00+05:00 to 2026-04-02T11:59:59+05:00; document unchanged",
+      "before": {
+        "rows_timestamp": "2026-03-17T14:01:00+05:00"
+      },
+      "after": {
+        "rows_timestamp": "2026-04-02T11:59:59+05:00"
+      },
+      "expected_amount_minor": 2465600,
+      "currency": "KZT",
+      "effect_imbalance": 0,
+      "effect_ar_diff": 4581,
+      "affected_ids": [
+        "PAY-2026-0019",
+        "row_00185",
+        "row_00186"
+      ]
+    }
+  ],
+  "invariants_before": {
+    "sum_debits": 241334915,
+    "sum_credits": 241334915,
+    "books_balanced": true,
+    "ar_balance_in_period": 33695273,
+    "invoiced_in_period": 133424048,
+    "paid_in_period": 99728775,
+    "ar_matches_documents": true,
+    "base_currency": "USD"
+  },
+  "invariants_after": {
+    "sum_debits": 241334915,
+    "sum_credits": 241334683,
+    "books_balanced": false,
+    "ar_balance_in_period": 33700086,
+    "invoiced_in_period": 133424048,
+    "paid_in_period": 99728775,
+    "ar_matches_documents": false,
+    "base_currency": "USD"
+  }
+}

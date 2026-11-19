@@ -426,7 +426,7 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         elif kind == "partial_allocation":
             issue, mutation = _inject_partial_allocation(rng, ledger, payments,
                                                          period_start, period_end,
-                                                         used_payments, fx, policy_day)
+                                                         used_payments, fx, policy_day, base)
             used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
         elif kind == "fx_rate":
             issue, mutation = _inject_fx_rate(rng, ledger, payments, used_payments,
@@ -626,7 +626,7 @@ def _inject_period_cutoff(rng: random.Random, ledger: list[dict], payments: list
 def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments: list[dict],
                                period_start: datetime, period_end: datetime,
                                exclude: set[str] | None, fx: FxTable,
-                               policy_day: date) -> tuple[dict, dict]:
+                               policy_day: date, base: str) -> tuple[dict, dict]:
     """Документ платежа полон, обе строки журнала уменьшены на недостающую сумму."""
     by_payment: dict[str, list[dict]] = {}
     for row in ledger:
@@ -658,9 +658,15 @@ def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments:
 
     total = int(pay["amount_minor"])
     delta = min(max(1, total * rng.randrange(10, 45) // 100), total - 1)
-    cash_row["debit_minor"] = int(cash_row["debit_minor"]) - delta
-    ar_row["credit_minor"] = int(ar_row["credit_minor"]) - delta
-    delta_base = fx.convert(delta, pay["currency"], "USD", policy_day)
+    ar_before = int(ar_row["credit_minor"])
+    cash_before = int(cash_row["debit_minor"])
+    cash_row["debit_minor"] = cash_before - delta
+    ar_row["credit_minor"] = ar_before - delta
+    # Эффект считаем по НАБЛЮДАЕМОЙ разнице сконвертированных сумм:
+    # conv(a) - conv(b) != conv(a - b) из-за независимого округления каждой
+    # конвертации (иначе заявленное расхождение расходится на единицу).
+    delta_base = (fx.convert(ar_before, pay["currency"], base, policy_day)
+                  - fx.convert(int(ar_row["credit_minor"]), pay["currency"], base, policy_day))
 
     issue_id = "iss_partial_0001"
     issue = {

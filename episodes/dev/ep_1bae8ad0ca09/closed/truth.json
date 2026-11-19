@@ -1,0 +1,30 @@
+{
+  "episode_id": "ep_1bae8ad0ca09",
+  "issues": [
+    {
+      "issue_id": "iss_partial_0001",
+      "type": "partial_allocation",
+      "affected_ids": [
+        "PAY-2026-0014",
+        "row_00159",
+        "row_00160"
+      ],
+      "expected_amount_minor": 87126,
+      "currency": "EUR",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0014",
+          "ledger:row_00160",
+          "invoice:INV-2026-0014"
+        ],
+        [
+          "payment:PAY-2026-0014",
+          "ledger:row_00159",
+          "ledger:row_00160"
+        ]
+      ],
+      "statement": "платёж PAY-2026-0014 распределён в журнале на 425383 при документе на 512509: недостаёт 87126"
+    }
+  ]
+}
