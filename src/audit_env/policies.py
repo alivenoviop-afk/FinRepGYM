@@ -243,7 +243,8 @@ class ReconciliationPolicy(BasePolicy):
             if key in seen:
                 findings.append({
                     "type": "duplicate_entry",
-                    "affected_ids": [row["row_id"]],
+                    # обе строки пары: после перестановки нельзя сказать, какая была копией
+                    "affected_ids": sorted([seen[key], row["row_id"]]),
                     "claimed_amount_minor": int(row["debit_minor"] or row["credit_minor"]),
                     "currency": row["currency"],
                     "evidence_ids": [f"ledger:{row['row_id']}", f"ledger:{seen[key]}",

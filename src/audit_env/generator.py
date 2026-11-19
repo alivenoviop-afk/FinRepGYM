@@ -268,7 +268,10 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         raise EpisodeError("no implemented issue type requested")
 
     rng = random.Random(seed)
-    tz = timezone(timedelta(hours=int(cfg["utc_offset"][1:3])) * (1 if cfg["utc_offset"][0] == "+" else -1))
+    sign = 1 if cfg["utc_offset"][0] == "+" else -1
+    hours = int(cfg["utc_offset"][1:3])
+    minutes = int(cfg["utc_offset"][4:6]) if len(cfg["utc_offset"]) >= 6 else 0
+    tz = timezone(sign * timedelta(hours=hours, minutes=minutes))
     period_start = datetime.fromisoformat(cfg["period_start"]).replace(tzinfo=tz)
     period_end = ((datetime.fromisoformat(cfg["period_end"]) + timedelta(days=1))
                   .replace(tzinfo=tz) - timedelta(seconds=1))
@@ -507,7 +510,10 @@ def _inject_duplicate(rng: random.Random, ledger: list[dict], invoices: list[dic
     issue = {
         "issue_id": issue_id,
         "type": "duplicate_entry",
-        "affected_ids": [dup["row_id"]],
+        # Затронуты ОБЕ строки пары: после перестановки/переименования из данных
+        # невозможно определить, какая из идентичных строк была «копией»,
+        # поэтому эталон указывает на пару — это и делает ответ инвариантным.
+        "affected_ids": sorted([src["row_id"], dup["row_id"]]),
         "expected_amount_minor": amount,
         "currency": dup["currency"],
         "amount_tolerance_minor": 0,
@@ -528,7 +534,7 @@ def _inject_duplicate(rng: random.Random, ledger: list[dict], invoices: list[dic
         "currency": dup["currency"],
         "effect_imbalance": -amount_base,
         "effect_ar_diff": 0,
-        "affected_ids": [dup["row_id"]],
+        "affected_ids": sorted([src["row_id"], dup["row_id"]]),
     }
     return issue, mutation
 
@@ -755,17 +761,20 @@ def _inject_fx_rate(rng: random.Random, ledger: list[dict], payments: list[dict]
 # loading / saving
 # --------------------------------------------------------------------------- #
 def load_episode(episode_dir: str | Path) -> dict[str, dict[str, str]]:
+    """Читает эпизод из корня каталога либо из подкаталогов open/ и closed/."""
     root = Path(episode_dir)
+    open_root = root / "open" if (root / "open").is_dir() else root
+    closed_root = root / "closed" if (root / "closed").is_dir() else root
     open_names = ["manifest.json", "ledger.csv", "invoices.jsonl", "payments.jsonl",
                   "fx.csv", "policy.json"]
     closed_names = ["truth.json", "provenance.json"]
-    missing = [n for n in open_names if not (root / n).exists()]
+    missing = [n for n in open_names if not (open_root / n).exists()]
     if missing:
         raise EpisodeError(f"episode directory {root} is missing: {missing}")
     return {
-        "open": {n: (root / n).read_text(encoding="utf-8") for n in open_names},
-        "closed": {n: (root / n).read_text(encoding="utf-8") for n in closed_names
-                   if (root / n).exists()},
+        "open": {n: (open_root / n).read_text(encoding="utf-8") for n in open_names},
+        "closed": {n: (closed_root / n).read_text(encoding="utf-8") for n in closed_names
+                   if (closed_root / n).exists()},
     }
 
 

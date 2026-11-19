@@ -117,6 +117,21 @@ class TestActions(unittest.TestCase):
         self.assertEqual(report["metrics"]["n_findings"], 0)  # пустой итоговый ответ
         self.assertTrue(report["log"] and report["log"][-1]["event"] == "truncated")
 
+    def test_time_limit_truncates_with_empty_final_answer(self):
+        """Лимит времени (60 с) обрезает эпизод ДО выполнения действия (спека 04)."""
+        env = AuditEnv(time_limit_s=0.0)
+        env.reset(seed=SEED, config=SMALL)
+        obs, reward, terminated, truncated, info = env.step(
+            {"action": "submit", "episode_id": env._manifest["episode_id"], "findings": []})
+        self.assertTrue(truncated, "истёкшее время -> truncated")
+        self.assertFalse(terminated, "действие не должно выполниться")
+        self.assertEqual(obs["error"]["code"], "time_limit")
+        report = env.evaluator_report()
+        self.assertEqual(report["metrics"]["n_findings"], 0, "пустой итоговый ответ")
+        self.assertEqual(report["log"][-1]["event"], "truncated")
+        with self.assertRaises(ContractViolation):
+            env.step({"action": "list_records", "table": "ledger", "cursor": 0, "limit": 1})
+
     def test_submit_terminates_and_step_afterwards_is_rejected(self):
         obs, *_ = self._step({"action": "submit", "episode_id": obs_episode(self.env),
                               "findings": []})

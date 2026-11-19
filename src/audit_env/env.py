@@ -240,6 +240,18 @@ class AuditEnv:
         self._steps += 1
         steps_left = max(0, self.max_steps - self._steps)
 
+        # Лимит ВРЕМЕНИ проверяется до выполнения действия: по спеке истёкшее время
+        # даёт truncated=true с пустым итоговым ответом, а действие не исполняется.
+        # >= вместо > : на Windows time.monotonic() может не продвинуться между
+        # соседними вызовами (granularity), а лимит 0 должен срабатывать всегда.
+        if (time.monotonic() - self._t0) >= self.time_limit_s:
+            reward = self._finalise_empty()
+            observation = {"error": {"code": "time_limit",
+                                     "message": "episode time limit exceeded"},
+                           "steps_left": steps_left}
+            info = {"mode": self.mode, "steps_used": self._steps}
+            return observation, float(reward), False, True, info
+
         is_submit = isinstance(action, dict) and action.get("action") == "submit"
         terminated = truncated = False
         reward = 0.0
@@ -251,7 +263,7 @@ class AuditEnv:
             payload, error = self._dispatch(action)
             observation = {"result": payload} if error is None else {"error": error}
             observation["steps_left"] = steps_left
-            if steps_left <= 0 or (time.monotonic() - self._t0) > self.time_limit_s:
+            if steps_left <= 0 or (time.monotonic() - self._t0) >= self.time_limit_s:
                 truncated = True
                 reward = self._finalise_empty()
 

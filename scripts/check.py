@@ -18,8 +18,10 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -27,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
 
-from audit_env import AuditEnv, generate  # noqa: E402
+from audit_env import AuditEnv, generate, permute_episode, remap_submission, save_episode  # noqa: E402
 from audit_env.policies import (  # noqa: E402
     MarkAllPolicy,
     OraclePolicy,
@@ -155,6 +157,72 @@ def main() -> int:
     check("200 <= проводок <= 2000", 200 <= man["n_records"] <= 2000, f"{man['n_records']}")
     check("20 <= документов <= 200", 20 <= man["n_documents"] <= 200, f"{man['n_documents']}")
     check("0 <= ошибок <= 12", len(json.loads(big["closed"]["truth.json"])["issues"]) <= 12)
+
+    # 7. парные проверки: порядок + смена ID -------------------------------- #
+    print("\n7) Парные проверки (порядок строк + переименование ID)")
+    pairs = 10
+    four = ["duplicate_entry", "period_cutoff", "partial_allocation", "fx_rate"]
+    ok_pairs = 0
+    pair_errors: list[str] = []
+    for seed in seeds[:pairs]:
+        tmp = None
+        try:
+            files = generate(seed, {"n_invoices": 25, "issue_types": four, "n_issues": 4})
+            perm, id_map = permute_episode(files, seed=seed + 7777)
+            tmp = Path(tempfile.mkdtemp(prefix="pair_"))
+            save_episode(files, tmp / "a")
+            save_episode(perm, tmp / "b")
+
+            env_o = AuditEnv()
+            env_o.reset(seed=1, config={"episode_dir": str(tmp / "a")})
+            res_o = run_episode(env_o, OraclePolicy(env_o.evaluator_truth()),
+                                seed=1, config={"episode_dir": str(tmp / "a")})
+            remapped = remap_submission(res_o["trajectory"][-1]["action"], id_map)
+
+            env_p = AuditEnv()
+            env_p.reset(seed=1, config={"episode_dir": str(tmp / "b")})
+            _, reward, term, trunc, _ = env_p.step(remapped)
+            rep = env_p.evaluator_report()
+
+            env_r = AuditEnv()
+            env_r.reset(seed=2, config={"episode_dir": str(tmp / "b")})
+            res_r = run_episode(env_r, ReconciliationPolicy(), seed=2,
+                                config={"episode_dir": str(tmp / "b")})
+            mr = res_r["report"]["metrics"]
+
+            same = (term and not trunc
+                    and rep["metrics"]["f1"] == res_o["report"]["metrics"]["f1"] == 1.0
+                    and abs(reward - res_o["report"]["true_reward"]) < 1e-12
+                    and mr["fp"] == 0 and mr["fn"] == 0)
+            if same:
+                ok_pairs += 1
+            else:
+                pair_errors.append(f"seed={seed}: f1={rep['metrics']['f1']} "
+                                   f"recon={mr['fp']}/{mr['fn']}")
+        except Exception as exc:  # noqa: BLE001
+            pair_errors.append(f"seed={seed}: {type(exc).__name__}: {exc}")
+        finally:
+            if tmp is not None:
+                shutil.rmtree(tmp, ignore_errors=True)
+    check("парные проверки: ответ оракула и награда сохраняются, сверка верна",
+          ok_pairs == pairs, f"{ok_pairs}/{pairs}" + (f" {pair_errors[:2]}" if pair_errors else ""))
+
+    # 8. вариативность часовых поясов --------------------------------------- #
+    print("\n8) Часовые пояса (ось конфигурации)")
+    tz_ok = True
+    tz_detail = []
+    for off in ("+03:00", "-07:00", "+09:30"):
+        f = generate(11, {"n_invoices": 12, "utc_offset": off, "n_issues": 2,
+                          "issue_types": ["duplicate_entry", "partial_allocation"]})
+        man = json.loads(f["open"]["manifest.json"])
+        prov = json.loads(f["closed"]["provenance.json"])
+        ok = (man["utc_offset"] == off and man["period_end"].endswith(off)
+              and prov["stages"][-1]["declared_discrepancies"]["verified"])
+        if not ok:
+            tz_ok = False
+            tz_detail.append(off)
+    check("смещения +03:00 / -07:00 / +09:30: равенства сходятся", tz_ok,
+          "" if tz_ok else f"сломано: {tz_detail}")
 
     # итог ------------------------------------------------------------------- #
     passed = sum(1 for ok, _ in RESULTS if ok)
