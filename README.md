@@ -23,6 +23,7 @@ python scripts/build_trajectories.py    # trajectories.jsonl + docs/DIAGNOSTICS.
 python scripts/check.py                 # единая проверка жюри: 32/32
 python scripts/spec_audit.py            # параметрический аудит ТЗ: 100/100 (по разделам)
 python scripts/jury_conditions.py       # слепая проверка на условиях оценщиков: 9/9
+python scripts/jury_marathon.py        # 10 оценок жюри ПОДРЯД (200 эпизодов, 2 ядра): 10/10
 python scripts/organizer_check.py       # репетиция закрытой проверки: 20 эпизодов x 4 политики
 python scripts/demo.py                  # демо скриптовой политики
 python -m unittest discover -s tests -v # 103 теста

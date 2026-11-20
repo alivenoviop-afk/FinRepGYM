@@ -35,6 +35,10 @@ jobs:
       - name: Слепая проверка условий оценщиков (jury_conditions)
         run: python scripts/jury_conditions.py
 
+      # Марафон: оценки жюри подряд (стабильность и ресурсы)
+      - name: Марафон оценок жюри (3 подряд)
+        run: python scripts/jury_marathon.py --runs 3
+
       # Офлайн-доказательство: без site-packages (сторонних пакетов нет вообще)
       - name: Офлайн-режим (python -S, без site-packages)
         run: python -S -m unittest discover -s tests

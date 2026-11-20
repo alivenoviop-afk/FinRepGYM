@@ -58,27 +58,28 @@ def scen(n, names, issues=None, **e): return {"n_invoices": n, "issue_types": is
 # 20 никогда не использовавшихся seed + новые сочетания параметров
 JURY: list[tuple[str, int, dict]] = [
     # -- 5 чистых (включая экзотику) --
-    ("clean", 97001, clean(50, utc_offset="+00:00")),
+    # n подобраны с запасом: при малых n разброс по seed уводит ниже 200 строк
+    ("clean", 97001, clean(65, utc_offset="+00:00")),
     ("clean", 97002, clean(90, distractors=False)),
     ("clean", 97003, clean(70, currencies=["USD"])),          # одна валюта
     ("clean", 97004, clean(65, scenarios=["S1", "S2"])),      # clean главенствует
-    ("clean", 97005, clean(55, utc_offset="-03:00")),
+    ("clean", 97005, clean(65, utc_offset="-03:00")),
     # -- 5 одиночных --
-    ("single", 97006, single(60, FX, distractors=False)),     # fx без отвлекающих
-    ("single", 97007, single(55, DUP)),
+    ("single", 97006, single(70, FX, distractors=False)),     # fx без отвлекающих
+    ("single", 97007, single(65, DUP)),
     ("single", 97008, single(60, PART)),
     ("single", 97009, single(75, CUT, utc_offset="+06:00")),
     ("single", 97010, single(90, FX)),
     # -- 5 парных --
-    ("pair", 97011, pair(55, DUP, FX)),
+    ("pair", 97011, pair(65, DUP, FX)),
     ("pair", 97012, pair(70, PART, CUT)),
     ("pair", 97013, pair(60, FX, CUT)),
     ("pair", 97014, pair(90, DUP, PART)),
     ("pair", 97015, pair(65, PART, FX)),
     # -- 5 взаимодействий --
-    ("interacting", 97016, scen(60, ["S1"], distractors=False)),
+    ("interacting", 97016, scen(70, ["S1"], distractors=False)),
     ("interacting", 97017, scen(70, ["S2"])),
-    ("interacting", 97018, scen(50, ["S1", "S2"])),
+    ("interacting", 97018, scen(65, ["S1", "S2"])),
     ("interacting", 97019, scen(80, ["S1"], issues=[DUP])),
     ("interacting", 97020, scen(65, ["S2"], issues=[FX])),
 ]
