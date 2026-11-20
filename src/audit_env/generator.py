@@ -253,6 +253,23 @@ def _verify_declared(before: dict, after: dict, mutations: list[dict]) -> dict[s
     }
 
 
+def episode_fingerprint(seed: int, config: dict | None = None) -> str:
+    """SHA-256 всех файлов эпизода (open + closed, в порядке имён).
+
+    «Отпечаток» эпизода для кросс-платформенного контроля: одинаковые
+    seed / config / версия генератора дают одинаковый хеш на любой ОС,
+    железе и версии Python (тест test_golden.py сверяет с константой,
+    CI гоняет тот же тест на Linux).
+    """
+    files = generate(seed, config)
+    digest = hashlib.sha256()
+    for zone in ("open", "closed"):
+        for name in sorted(files[zone]):
+            digest.update(f"{zone}/{name}\n".encode("utf-8"))
+            digest.update(files[zone][name].encode("utf-8"))
+    return digest.hexdigest()
+
+
 # --------------------------------------------------------------------------- #
 # generation
 # --------------------------------------------------------------------------- #
@@ -339,6 +356,13 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
     for i in range(int(cfg["n_invoices"])):
         day = rng.randrange(0, n_days)
         issued = period_start + timedelta(days=day, hours=rng.randrange(8, 18), minutes=rng.randrange(60))
+        # Пограничные даты (правдоподобие + ловушки для < / <= в policy):
+        # счёт, выставленный в самый первый или самый последний момент периода.
+        edge = rng.random()
+        if edge < 0.05:
+            issued = period_start + timedelta(seconds=rng.randrange(1, 3600))
+        elif edge < 0.10:
+            issued = period_end - timedelta(seconds=rng.randrange(0, 3600))
         due = issued + timedelta(days=14)
         amount = rng.choice(pool)
         inv_ccy = rng.choices(currencies, weights=weights, k=1)[0]
@@ -373,6 +397,12 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         pay_dt = issued + timedelta(days=rng.randrange(1, 21), hours=rng.randrange(1, 8))
         if pay_dt > period_end:
             pay_dt = period_end - timedelta(hours=rng.randrange(1, 20))
+        # Пограничные даты платежа: последний момент периода (23:59:59 последнего
+        # дня — проверка включительности границ) или платёж в тот же день, что счёт.
+        if rng.random() < 0.05 and period_end > issued:
+            pay_dt = period_end
+        elif issued.date() == period_start.date() and rng.random() < 0.10:
+            pay_dt = issued + timedelta(hours=rng.randrange(1, 6))
         total = inv["total_minor"]
         if cfg["distractors"] and r < 0.50:
             shares = _split_amount(total, 2, rng)   # split payment: legitimate

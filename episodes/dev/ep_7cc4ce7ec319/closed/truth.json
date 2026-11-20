@@ -5,52 +5,52 @@
       "issue_id": "iss_s2_partial_0001",
       "type": "partial_allocation",
       "affected_ids": [
-        "PAY-2026-0106",
-        "rec_00268",
-        "rec_00269"
+        "PAY-2026-0082",
+        "rec_00212",
+        "rec_00213"
       ],
-      "expected_amount_minor": 242536,
+      "expected_amount_minor": 545127,
       "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0106",
-          "ledger:rec_00269",
-          "invoice:INV-2026-0021"
+          "payment:PAY-2026-0082",
+          "ledger:rec_00213",
+          "invoice:INV-2026-0001"
         ],
         [
-          "payment:PAY-2026-0106",
-          "ledger:rec_00268",
-          "ledger:rec_00269"
+          "payment:PAY-2026-0082",
+          "ledger:rec_00212",
+          "ledger:rec_00213"
         ]
       ],
-      "statement": "S2: платёж PAY-2026-0106 (EUR) распределён в журнале на 727608 USD при документе, эквивалент 970144 USD: недостаёт 242536"
+      "statement": "S2: платёж PAY-2026-0082 (EUR) распределён в журнале на 2050717 USD при документе, эквивалент 2595844 USD: недостаёт 545127"
     },
     {
       "issue_id": "iss_s2_cutoff_0001",
       "type": "period_cutoff",
       "affected_ids": [
-        "PAY-2026-0106",
-        "rec_00268",
-        "rec_00269"
+        "PAY-2026-0082",
+        "rec_00212",
+        "rec_00213"
       ],
-      "expected_amount_minor": 955701,
+      "expected_amount_minor": 2557200,
       "currency": "EUR",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0106",
-          "ledger:rec_00269",
+          "payment:PAY-2026-0082",
+          "ledger:rec_00213",
           "policy:period"
         ],
         [
-          "payment:PAY-2026-0106",
-          "ledger:rec_00268",
-          "ledger:rec_00269",
+          "payment:PAY-2026-0082",
+          "ledger:rec_00212",
+          "ledger:rec_00213",
           "policy:period"
         ]
       ],
-      "statement": "строки платежа PAY-2026-0106 отнесены к периоду после period_end при документе с настоящей датой"
+      "statement": "строки платежа PAY-2026-0082 отнесены к периоду после period_end при документе с настоящей датой"
     }
   ]
 }

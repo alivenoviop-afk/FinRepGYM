@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from support import AuditEnv, compute_metrics, match, terminal_reward
+from support import SEED, AuditEnv, compute_metrics, match, terminal_reward
 
 TRUTH = [{
     "issue_id": "iss_1",
@@ -72,6 +72,39 @@ class TestMatching(unittest.TestCase):
         m = match(TRUTH + two, [finding()])
         self.assertEqual(m["tp"], 1)
         self.assertEqual(m["fn"], 1)
+
+    def test_finding_order_does_not_change_metrics_or_reward(self):
+        """Порядок находок в submit не влияет на результат (спека: порядок)."""
+        cfg = {"n_invoices": 25,
+               "issue_types": ["duplicate_entry", "period_cutoff",
+                               "partial_allocation", "fx_rate"],
+               "n_issues": 4}
+
+        def run(order):
+            env = AuditEnv()
+            env.reset(seed=SEED, config=cfg)
+            truth = env.evaluator_truth()
+            findings = [{"type": i["type"], "affected_ids": sorted(i["affected_ids"]),
+                         "claimed_amount_minor": i["expected_amount_minor"],
+                         "currency": i["currency"],
+                         "evidence_ids": list(i["evidence_sets"][0]),
+                         "explanation": "x"} for i in truth]
+            selected = [findings[k] for k in order]
+            _, reward, terminated, *_ = env.step(
+                {"action": "submit", "episode_id": env._manifest["episode_id"],
+                 "findings": selected})
+            m = env.evaluator_report()["metrics"]
+            return (m["tp"], m["fp"], m["fn"], round(m["f1"], 9),
+                    round(reward, 9), terminated)
+
+        probe = AuditEnv()
+        probe.reset(seed=SEED, config=cfg)
+        n = len(probe.evaluator_truth())
+        self.assertEqual(n, 4, "нужны все четыре типа")
+
+        straight = run(list(range(n)))
+        self.assertEqual(straight, run(list(range(n - 1, -1, -1))), "обратный порядок")
+        self.assertEqual(straight, run([2, 0, 3, 1]), "перемешанный порядок")
 
 
 class TestMetricEdgeCases(unittest.TestCase):

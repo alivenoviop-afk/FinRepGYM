@@ -14,7 +14,7 @@ import re
 import unittest
 from decimal import Decimal, ROUND_HALF_UP
 
-from support import AuditEnv, SCHEMA_VERSION, SEED, SMALL, generate
+from support import AuditEnv, ReconciliationPolicy, SCHEMA_VERSION, SEED, SMALL, generate, run_with
 
 ISO_OFFSET = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$")
 DECIMAL = re.compile(r"^\d+\.\d+$")
@@ -262,6 +262,21 @@ class TestEvidenceSufficiency(unittest.TestCase):
 class TestMultiCurrency(unittest.TestCase):
     CONFIG = {"n_invoices": 40}
 
+    def test_each_currency_balanced_separately_on_clean(self):
+        """Мультивалюта сходится ПО КАЖДОЙ валюте, а не «в среднем»."""
+        for seed in (1, 5, 9):
+            files = generate(seed, {"n_invoices": 70, "clean": True, "n_issues": 0})
+            per: dict[str, list[int]] = {}
+            for row in csv.DictReader(io.StringIO(files["open"]["ledger.csv"])):
+                acc = per.setdefault(row["currency"], [0, 0])
+                acc[0] += int(row["debit_minor"])
+                acc[1] += int(row["credit_minor"])
+            self.assertGreaterEqual(len(per), 2, f"seed={seed}: валюты не разнообразны")
+            for ccy, (debit, credit) in per.items():
+                self.assertEqual(debit, credit,
+                                 f"seed={seed}: валюта {ccy} не сбалансирована "
+                                 f"({debit} != {credit})")
+
     def test_documents_use_several_currencies(self):
         """Спека требует разные валюты; конвертация обязательна для сравнения."""
         _, manifest, ledger, invoices, payments, *_ = open_data(config=self.CONFIG)
@@ -351,6 +366,38 @@ class TestScope(unittest.TestCase):
         env = AuditEnv()
         with self.assertRaises(Exception):
             env.reset(seed=SEED, config={"episode_dir": "/nonexistent"})
+
+
+class TestBoundaryDates(unittest.TestCase):
+    """Пограничные даты: счёт/платёж в первый день и в последний момент периода.
+
+    Спека: policy.json объявляет границы включительно — данные обязаны эти
+    границы реально затрагивать, иначе проверка включительности ничего не весит.
+    """
+
+    def test_boundary_timestamps_present_across_seeds(self):
+        end_found = day0_found = False
+        for seed in range(1, 13):
+            files = generate(seed, {"n_invoices": 60})
+            man = json.loads(files["open"]["manifest.json"])
+            period_end = man["period_end"]
+            day0 = man["period_start"][:10]
+            stamps = {r["timestamp"] for r in
+                      csv.DictReader(io.StringIO(files["open"]["ledger.csv"]))}
+            end_found |= any(s == period_end for s in stamps)
+            day0_found |= any(s.startswith(day0) for s in stamps)
+            if end_found and day0_found:
+                break
+        self.assertTrue(end_found, "нет операции в последний момент периода (23:59:59)")
+        self.assertTrue(day0_found, "нет операций в первый день периода")
+
+    def test_boundary_does_not_create_false_cutoffs(self):
+        """Операция РОВНО на границе должна считаться внутри периода (inclusive)."""
+        for seed in (1, 2, 3, 4, 5, 6):
+            result = run_with(lambda e: ReconciliationPolicy(), seed, {"n_invoices": 60})
+            m = result["report"]["metrics"]
+            self.assertEqual((m["fp"], m["fn"]), (0, 0),
+                             f"seed={seed}: ложный сдвиг периода на границе {m}")
 
 
 class TestConfigCombos(unittest.TestCase):

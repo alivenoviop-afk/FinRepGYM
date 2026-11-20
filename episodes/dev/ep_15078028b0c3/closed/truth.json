@@ -5,21 +5,21 @@
       "issue_id": "iss_duplicate_0001",
       "type": "duplicate_entry",
       "affected_ids": [
-        "ln_00408",
-        "ln_05408"
+        "ln_00394",
+        "ln_05394"
       ],
-      "expected_amount_minor": 3622000,
-      "currency": "EUR",
+      "expected_amount_minor": 1254400,
+      "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "ledger:ln_05408",
-          "ledger:ln_00408",
-          "invoice:INV-2026-0021"
+          "ledger:ln_05394",
+          "ledger:ln_00394",
+          "invoice:INV-2026-0014"
         ],
         [
-          "ledger:ln_05408",
-          "ledger:ln_00408"
+          "ledger:ln_05394",
+          "ledger:ln_00394"
         ]
       ],
       "statement": "строка выручки продублирована: две идентичные записи на одну счёт-фактуру, равенство дебет=кредит нарушено на сумму строки"

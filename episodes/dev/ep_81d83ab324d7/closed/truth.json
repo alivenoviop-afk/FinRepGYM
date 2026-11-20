@@ -5,28 +5,28 @@
       "issue_id": "iss_fx_0001",
       "type": "fx_rate",
       "affected_ids": [
-        "PAY-2026-0897",
-        "entry_01067",
-        "entry_01068"
+        "PAY-2026-0886",
+        "entry_01043",
+        "entry_01044"
       ],
-      "expected_amount_minor": 135,
+      "expected_amount_minor": 9579,
       "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0897",
-          "ledger:entry_01068",
-          "fx:2026-03-31:KZT:USD",
+          "payment:PAY-2026-0886",
+          "ledger:entry_01044",
+          "fx:2026-03-31:EUR:USD",
           "policy:fx_rate_date"
         ],
         [
-          "payment:PAY-2026-0897",
-          "ledger:entry_01067",
-          "ledger:entry_01068",
+          "payment:PAY-2026-0886",
+          "ledger:entry_01043",
+          "ledger:entry_01044",
           "policy:fx_rate_date"
         ]
       ],
-      "statement": "платёж PAY-2026-0897 (KZT) конвертирован по курсу на 2026-02-19 вместо policy-даты 2026-03-31: расхождение 135 USD"
+      "statement": "платёж PAY-2026-0886 (EUR) конвертирован по курсу на 2026-03-05 вместо policy-даты 2026-03-31: расхождение 9579 USD"
     }
   ]
 }

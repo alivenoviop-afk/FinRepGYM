@@ -1,7 +1,10 @@
 """Public package surface for FinRepGYM."""
 
 from .env import AuditEnv, ContractViolation, safe_calculate
-from .generator import DEFAULT_CONFIG, ISSUE_TYPES, SCHEMA_VERSION, generate, load_episode, save_episode
+from .generator import (  # noqa: F401
+    DEFAULT_CONFIG, ISSUE_TYPES, SCHEMA_VERSION, episode_fingerprint, generate,
+    load_episode, save_episode,
+)
 from .matcher import canonical_ids, compute_metrics, match, normalize_finding, validate_submission
 from .reward import terminal_reward
 from .transforms import permute_episode, remap_submission

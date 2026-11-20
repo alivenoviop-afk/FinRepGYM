@@ -13,8 +13,8 @@
         "scenarios": []
       },
       "path": "episodes/train/ep_9ce2010caa6a",
-      "n_records": 230,
-      "n_documents": 108,
+      "n_records": 228,
+      "n_documents": 110,
       "n_issues": 0,
       "issue_types": [],
       "oracle_f1": 1.0,
@@ -33,8 +33,8 @@
         "utc_offset": "+03:00"
       },
       "path": "episodes/train/ep_3a155dec1b5f",
-      "n_records": 284,
-      "n_documents": 135,
+      "n_records": 308,
+      "n_documents": 140,
       "n_issues": 0,
       "issue_types": [],
       "oracle_f1": 1.0,
@@ -53,8 +53,8 @@
         "n_issues": 1
       },
       "path": "episodes/train/ep_2ccaa7897f27",
-      "n_records": 233,
-      "n_documents": 110,
+      "n_records": 253,
+      "n_documents": 118,
       "n_issues": 1,
       "issue_types": [
         "duplicate_entry"
@@ -75,8 +75,8 @@
         "n_issues": 1
       },
       "path": "episodes/train/ep_dd90ea09ad61",
-      "n_records": 250,
-      "n_documents": 118,
+      "n_records": 266,
+      "n_documents": 125,
       "n_issues": 1,
       "issue_types": [
         "partial_allocation"
@@ -97,8 +97,8 @@
         "n_issues": 1
       },
       "path": "episodes/train/ep_86cab9ee963c",
-      "n_records": 328,
-      "n_documents": 147,
+      "n_records": 280,
+      "n_documents": 131,
       "n_issues": 1,
       "issue_types": [
         "fx_rate"
@@ -119,8 +119,8 @@
         "n_issues": 1
       },
       "path": "episodes/train/ep_d1728b2241a0",
-      "n_records": 332,
-      "n_documents": 152,
+      "n_records": 310,
+      "n_documents": 144,
       "n_issues": 1,
       "issue_types": [
         "period_cutoff"
@@ -142,8 +142,8 @@
         "n_issues": 2
       },
       "path": "episodes/train/ep_5cebe8d30b4f",
-      "n_records": 255,
-      "n_documents": 124,
+      "n_records": 263,
+      "n_documents": 123,
       "n_issues": 2,
       "issue_types": [
         "duplicate_entry",
@@ -166,8 +166,8 @@
         "n_issues": 2
       },
       "path": "episodes/train/ep_38053f39ec74",
-      "n_records": 302,
-      "n_documents": 140,
+      "n_records": 306,
+      "n_documents": 141,
       "n_issues": 2,
       "issue_types": [
         "fx_rate",
@@ -190,8 +190,8 @@
         ]
       },
       "path": "episodes/train/ep_7a3826c15912",
-      "n_records": 288,
-      "n_documents": 132,
+      "n_records": 298,
+      "n_documents": 144,
       "n_issues": 2,
       "issue_types": [
         "fx_rate",
@@ -214,8 +214,8 @@
         ]
       },
       "path": "episodes/train/ep_98c3f37c78f1",
-      "n_records": 344,
-      "n_documents": 160,
+      "n_records": 318,
+      "n_documents": 149,
       "n_issues": 2,
       "issue_types": [
         "partial_allocation",
@@ -237,8 +237,8 @@
         "utc_offset": "-07:00"
       },
       "path": "episodes/dev/ep_70db46c72b22",
-      "n_records": 350,
-      "n_documents": 161,
+      "n_records": 348,
+      "n_documents": 160,
       "n_issues": 0,
       "issue_types": [],
       "oracle_f1": 1.0,
@@ -257,8 +257,8 @@
         "n_issues": 1
       },
       "path": "episodes/dev/ep_15078028b0c3",
-      "n_records": 223,
-      "n_documents": 103,
+      "n_records": 243,
+      "n_documents": 113,
       "n_issues": 1,
       "issue_types": [
         "duplicate_entry"
@@ -279,8 +279,8 @@
         "n_issues": 1
       },
       "path": "episodes/dev/ep_1bae8ad0ca09",
-      "n_records": 254,
-      "n_documents": 118,
+      "n_records": 240,
+      "n_documents": 110,
       "n_issues": 1,
       "issue_types": [
         "partial_allocation"
@@ -301,8 +301,8 @@
         "n_issues": 1
       },
       "path": "episodes/dev/ep_81d83ab324d7",
-      "n_records": 258,
-      "n_documents": 118,
+      "n_records": 288,
+      "n_documents": 132,
       "n_issues": 1,
       "issue_types": [
         "fx_rate"
@@ -324,7 +324,7 @@
       },
       "path": "episodes/dev/ep_d22a026cf718",
       "n_records": 308,
-      "n_documents": 142,
+      "n_documents": 150,
       "n_issues": 1,
       "issue_types": [
         "period_cutoff"
@@ -346,8 +346,8 @@
         "n_issues": 2
       },
       "path": "episodes/dev/ep_c06685be2720",
-      "n_records": 265,
-      "n_documents": 123,
+      "n_records": 269,
+      "n_documents": 122,
       "n_issues": 2,
       "issue_types": [
         "duplicate_entry",
@@ -370,8 +370,8 @@
         "n_issues": 2
       },
       "path": "episodes/dev/ep_d3376e30b5b4",
-      "n_records": 284,
-      "n_documents": 130,
+      "n_records": 262,
+      "n_documents": 123,
       "n_issues": 2,
       "issue_types": [
         "fx_rate",
@@ -394,8 +394,8 @@
         "n_issues": 2
       },
       "path": "episodes/dev/ep_559ae03f91be",
-      "n_records": 287,
-      "n_documents": 134,
+      "n_records": 325,
+      "n_documents": 144,
       "n_issues": 2,
       "issue_types": [
         "duplicate_entry",
@@ -418,8 +418,8 @@
         ]
       },
       "path": "episodes/dev/ep_71e116ad6d62",
-      "n_records": 250,
-      "n_documents": 117,
+      "n_records": 260,
+      "n_documents": 125,
       "n_issues": 2,
       "issue_types": [
         "fx_rate",
@@ -442,8 +442,8 @@
         ]
       },
       "path": "episodes/dev/ep_7cc4ce7ec319",
-      "n_records": 292,
-      "n_documents": 134,
+      "n_records": 272,
+      "n_documents": 129,
       "n_issues": 2,
       "issue_types": [
         "partial_allocation",

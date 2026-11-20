@@ -5,26 +5,26 @@
       "issue_id": "iss_partial_0001",
       "type": "partial_allocation",
       "affected_ids": [
-        "PAY-2026-0321",
-        "row_00484",
-        "row_00485"
+        "PAY-2026-0313",
+        "row_00470",
+        "row_00471"
       ],
-      "expected_amount_minor": 924870,
-      "currency": "KZT",
+      "expected_amount_minor": 123676,
+      "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0321",
-          "ledger:row_00485",
-          "invoice:FACT-2026-0029"
+          "payment:PAY-2026-0313",
+          "ledger:row_00471",
+          "invoice:FACT-2026-0026"
         ],
         [
-          "payment:PAY-2026-0321",
-          "ledger:row_00484",
-          "ledger:row_00485"
+          "payment:PAY-2026-0313",
+          "ledger:row_00470",
+          "ledger:row_00471"
         ]
       ],
-      "statement": "платёж PAY-2026-0321 распределён в журнале на 2158030 при документе на 3082900: недостаёт 924870"
+      "statement": "платёж PAY-2026-0313 распределён в журнале на 759724 при документе на 883400: недостаёт 123676"
     }
   ]
 }

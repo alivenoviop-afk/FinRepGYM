@@ -5,27 +5,27 @@
       "issue_id": "iss_period_0001",
       "type": "period_cutoff",
       "affected_ids": [
-        "PAY-2026-0871",
-        "entry_01123",
-        "entry_01124"
+        "PAY-2026-0830",
+        "entry_01027",
+        "entry_01028"
       ],
-      "expected_amount_minor": 1714800,
+      "expected_amount_minor": 2174300,
       "currency": "EUR",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0871",
-          "ledger:entry_01124",
+          "payment:PAY-2026-0830",
+          "ledger:entry_01028",
           "policy:period"
         ],
         [
-          "payment:PAY-2026-0871",
-          "ledger:entry_01123",
-          "ledger:entry_01124",
+          "payment:PAY-2026-0830",
+          "ledger:entry_01027",
+          "ledger:entry_01028",
           "policy:period"
         ]
       ],
-      "statement": "строки платежа PAY-2026-0871 отнесены к периоду после period_end при документе с настоящей датой"
+      "statement": "строки платежа PAY-2026-0830 отнесены к периоду после period_end при документе с настоящей датой"
     }
   ]
 }
