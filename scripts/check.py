@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import json
+import platform
 import shutil
 import subprocess
 import sys
@@ -42,6 +43,7 @@ FORBIDDEN = ["iss_", "issue_id", "expected_amount_minor", "provenance", "causal_
              "invariants_", "truth.json", "seed", "statement"]
 
 RESULTS: list[tuple[bool, str]] = []
+RUN_TIMES: list[tuple[float, str]] = []
 
 
 def check(name: str, ok: bool, detail: str = "") -> None:
@@ -50,9 +52,13 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 
 
 def run_policy(env: AuditEnv, factory, seed: int, config: dict):
+    """Запуск политики с замером времени (спека: 60 секунд на эпизод)."""
     env.reset(seed=seed, config=config)
     policy = factory(env)
-    return run_episode(env, policy, seed=seed, config=config)
+    started = time.monotonic()
+    result = run_episode(env, policy, seed=seed, config=config)
+    RUN_TIMES.append((time.monotonic() - started, f"seed={seed}"))
+    return result
 
 
 def sweep_config(name: str, config: dict, seeds: list[int]) -> None:
@@ -227,6 +233,19 @@ def main() -> int:
             tz_detail.append(off)
     check("смещения +03:00 / -07:00 / +09:30: равенства сходятся", tz_ok,
           "" if tz_ok else f"сломано: {tz_detail}")
+
+    # 9. лимит времени на эпизод + версии ---------------------------------- #
+    print("\n9) Лимит времени и версии")
+    worst, where = max(RUN_TIMES, default=(0.0, "-"))
+    check("каждый прогон укладывается в 60 секунд (спека)", worst < 60.0,
+          f"max={worst:.3f} с ({where}), прогонов: {len(RUN_TIMES)}")
+    import audit_env as _pkg
+    from audit_env import SCHEMA_VERSION
+    print(f"  | schema_version : {SCHEMA_VERSION}")
+    print(f"  | пакет          : audit_env {_pkg.__version__}")
+    print(f"  | python         : {sys.version.split()[0]} "
+          f"({platform.python_implementation()})")
+    print(f"  | платформа      : {platform.platform()}")
 
     # итог ------------------------------------------------------------------- #
     passed = sum(1 for ok, _ in RESULTS if ok)

@@ -156,6 +156,55 @@ class TestActions(unittest.TestCase):
         self.assertTrue(terminated)
         self.assertEqual(reward, -1.0)
 
+    def test_too_long_explanation_rejected(self):
+        finding = self._finding()
+        finding["explanation"] = "а" * 1001
+        _, reward, terminated, _, _ = self._step(
+            {"action": "submit", "episode_id": obs_episode(self.env), "findings": [finding]})
+        self.assertTrue(terminated)
+        self.assertEqual(reward, -1.0)
+
+    def test_too_many_evidence_ids_rejected(self):
+        finding = self._finding()
+        finding["evidence_ids"] = [f"ledger:row_{i:05d}" for i in range(11)]
+        _, reward, terminated, _, _ = self._step(
+            {"action": "submit", "episode_id": obs_episode(self.env), "findings": [finding]})
+        self.assertTrue(terminated)
+        self.assertEqual(reward, -1.0)
+
+    def test_non_integer_amount_rejected(self):
+        for bad in ("100", 10.5, True, None):
+            finding = self._finding()
+            finding["claimed_amount_minor"] = bad
+            self.env.reset(seed=SEED, config=SMALL)
+            _, reward, terminated, _, _ = self.env.step(
+                {"action": "submit", "episode_id": obs_episode(self.env), "findings": [finding]})
+            self.assertTrue(terminated, f"значение {bad!r} должно быть отклонено")
+            self.assertEqual(reward, -1.0)
+
+    def test_action_must_be_object(self):
+        obs, reward, terminated, truncated, info = self._step("list_records")
+        self.assertEqual(obs["error"]["code"], "invalid_action")
+        self.assertFalse(terminated or truncated)
+        self.assertEqual(info["steps_used"], 1)
+
+    def test_zero_limit_rejected(self):
+        obs, *_ = self._step({"action": "list_records", "table": "ledger",
+                              "cursor": 0, "limit": 0})
+        self.assertEqual(obs["error"]["code"], "invalid_limit")
+
+    def test_submit_allowed_on_the_last_budget_step(self):
+        """submit на 100-м шаге уважается (лимит шагов включает отправку)."""
+        env = AuditEnv()
+        env.reset(seed=SEED, config=SMALL)
+        for _ in range(99):
+            env.step({"action": "calculator", "expression": "1 + 1"})
+        obs, reward, terminated, truncated, info = env.step(
+            {"action": "submit", "episode_id": env._manifest["episode_id"], "findings": []})
+        self.assertTrue(obs.get("result", {}).get("accepted"))
+        self.assertTrue(terminated and not truncated)
+        self.assertEqual(info["steps_used"], 100)
+
     def test_too_many_findings_rejected(self):
         _, reward, terminated, _, _ = self._step({
             "action": "submit", "episode_id": obs_episode(self.env),

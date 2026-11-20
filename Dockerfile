@@ -11,6 +11,6 @@ WORKDIR /app
 COPY . .
 
 # Единая команда проверки = та же, что и локально:
-#   юнит-тесты (95) + все регламентные проверки (30/30)
+#   юнит-тесты (103) + все регламентные проверки (31/31)
 # Эквивалент: python -m unittest discover -s tests && python scripts/check.py
 CMD ["python", "scripts/check.py"]
