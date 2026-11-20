@@ -7,8 +7,8 @@
 > **Статус: 19.11.2026** — контракт, все 4 типа ошибок, мультивалютность (USD/EUR/KZT),
 > сценарии взаимодействия S1/S2, возвраты, воспроизводимость и обобщение (парные проверки),
 > matcher, награда, 4 политики, **10 train + 10 dev эпизодов, траектории 4 политик,
-> диагностика P/R/F1/возврат/шаги/время**. **103 теста, `check.py` 31/31,
-> репетиция закрытой проверки 20×4 (`organizer_check.py`).**
+> диагностика P/R/F1/возврат/шаги/время**. **103 теста, `check.py` 32/32,
+> репетиция закрытой проверки 20×4 (`organizer_check.py`), 20 парных проверок.**
 > Осталось: контейнер (Dockerfile), записка, демо и защита (22.11, 12:00).
 
 Воспроизводимый симулятор ИИ-аудитора: синтетические документы компании, инструменты
@@ -20,7 +20,7 @@
 python scripts/demo_all.py              # ДЕМО ДЛЯ ЖЮРИ: весь прогон с репликами (~20 с)
 python scripts/build_episodes.py        # 10 train + 10 dev эпизодов + реестр
 python scripts/build_trajectories.py    # trajectories.jsonl + docs/DIAGNOSTICS.md
-python scripts/check.py                 # единая проверка жюри: 31/31
+python scripts/check.py                 # единая проверка жюри: 32/32
 python scripts/organizer_check.py       # репетиция закрытой проверки: 20 эпизодов x 4 политики
 python scripts/demo.py                  # демо скриптовой политики
 python -m unittest discover -s tests -v # 103 теста
@@ -35,7 +35,7 @@ python -m unittest discover -s tests -v # 103 теста
 
 ```bash
 docker build -t audit-rl-env .                                  # сборка (сеть нужна 1 раз — для базового образа)
-docker run --rm audit-rl-env                                    # ЕДИНАЯ ПРОВЕРКА: 103 теста + 31/31
+docker run --rm audit-rl-env                                    # ЕДИНАЯ ПРОВЕРКА: 103 теста + 32/32
 docker run --rm audit-rl-env python scripts/demo_all.py --fast  # демо для жюри
 docker run --rm audit-rl-env python scripts/demo.py --policy oracle   # одна политика
 ```
@@ -68,7 +68,7 @@ fintech-audit-rl/
 │   └── dev/<episode_id>/        # 10 эпизодов
 ├── trajectories.jsonl           # 80 прогонов (20 эпизодов × 4 политики)
 ├── artifacts/diagnostics.csv    # сырые метрики каждого прогона
-├── docs/                        # DESIGN_NOTE (записка), SCHEMAS, ARCHITECTURE, RULES, DIAGNOSTICS, SUMMARY
+├── docs/                        # DESIGN_NOTE, SCHEMAS, SELF_REPORT, ARCHITECTURE, RULES, DIAGNOSTICS, SUMMARY
 └── tests/                       # 103 теста
 ```
 

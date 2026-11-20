@@ -12,10 +12,10 @@
   "period_end": "2026-03-31T23:59:59+05:00",
   "timezone": "Asia/Almaty",
   "utc_offset": "+05:00",
-  "n_records": 261,
+  "n_records": 265,
   "n_documents": 123,
   "tables": {
-    "ledger": 261,
+    "ledger": 265,
     "invoices": 60,
     "payments": 63,
     "fx": 84

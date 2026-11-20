@@ -286,9 +286,20 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
     fx = FxTable(rng, currencies, period_start.date(), period_end.date())
     policy_day = period_end.date()
 
+    # Вариативность «имён и ID» (спека 02: «Варьируйте имена, ID, порядок...»):
+    # префиксы и старт нумерации выбираются для каждого эпизода из своего seed.
+    row_prefix = rng.choice(("row_", "rec_", "entry_", "ln_"))
+    inv_prefix = rng.choice(("INV-", "FACT-", "BILL-", "INVC-"))
+    pay_prefix = "PAY-"  # пространство платежей устойчиво; варьируется номер (см. ниже)
+    ent_prefix = rng.choice(("ENT-", "CPTY-", "PARTNER-", "AGT-"))
+    inv_doc_prefix = rng.choice(("inv_doc_", "bill_doc_", "fact_doc_"))
+    pay_doc_prefix = rng.choice(("pay_doc_", "trf_doc_", "pmt_doc_"))
+    id_offset = rng.randrange(1, 900)
+    year_tag = period_start.year
+
     # ---- stage 1: hidden history ----------------------------------------- #
     n_entities = rng.randint(4, 8)
-    entities = [f"ENT-{i:03d}" for i in range(1, n_entities + 1)]
+    entities = [f"{ent_prefix}{i:03d}" for i in range(1, n_entities + 1)]
     pool = [rng.randint(50_00, 400_00) * 100 for _ in range(6)]
 
     invoices: list[dict] = []
@@ -301,7 +312,7 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         nonlocal row_no
         row_no += 1
         row = {
-            "row_id": f"row_{row_no:05d}",
+            "row_id": f"{row_prefix}{id_offset + row_no:05d}",
             "timestamp": _iso(ts),
             "account": account,
             "debit_minor": int(debit),
@@ -322,11 +333,11 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         amount = rng.choice(pool)
         inv_ccy = rng.choices(currencies, weights=weights, k=1)[0]
         entity = rng.choice(entities)
-        inv_id = f"INV-2026-{i + 1:04d}"
+        inv_id = f"{inv_prefix}{year_tag}-{i + 1:04d}"
         parts = rng.randint(1, 3) if cfg["distractors"] else 1
         shares = _split_amount(amount, parts, rng)
         invoices.append({
-            "doc_id": f"inv_doc_{i + 1:04d}",
+            "doc_id": f"{inv_doc_prefix}{i + 1:04d}",
             "invoice_id": inv_id,
             "entity_id": entity,
             "issued_at": _iso(issued),
@@ -373,9 +384,11 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
 
         for share in shares:
             pay_no += 1
-            pay_id = f"PAY-2026-{pay_no:04d}"
+            # префикс PAY- сохраняем устойчивым (пространство платежей), а номер
+            # получает смещение эпизода -> ID варьируется от seed к seed
+            pay_id = f"PAY-{year_tag}-{id_offset + pay_no:04d}"
             payments.append({
-                "doc_id": f"pay_doc_{pay_no:04d}",
+                "doc_id": f"{pay_doc_prefix}{pay_no:04d}",
                 "payment_id": pay_id,
                 "timestamp": _iso(pay_dt),
                 "currency": pay_ccy,
@@ -414,6 +427,7 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
     truth: list[dict] = []
     mutations: list[dict] = []
     used_payments: set[str] = set()
+    payment_id_set = {p["payment_id"] for p in payments}
     chosen = issue_types[:n_issues]
     for kind in chosen:
         if kind == "duplicate_entry":
@@ -422,16 +436,16 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
             issue, mutation = _inject_period_cutoff(rng, ledger, payments,
                                                     period_start, period_end, used_payments,
                                                     fx, policy_day)
-            used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+            used_payments.update(x for x in issue["affected_ids"] if x in payment_id_set)
         elif kind == "partial_allocation":
             issue, mutation = _inject_partial_allocation(rng, ledger, payments,
                                                          period_start, period_end,
                                                          used_payments, fx, policy_day, base)
-            used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+            used_payments.update(x for x in issue["affected_ids"] if x in payment_id_set)
         elif kind == "fx_rate":
             issue, mutation = _inject_fx_rate(rng, ledger, payments, used_payments,
                                               fx, policy_day, base)
-            used_payments.update(x for x in issue["affected_ids"] if x.startswith("PAY-"))
+            used_payments.update(x for x in issue["affected_ids"] if x in payment_id_set)
         else:  # pragma: no cover - guarded above
             raise EpisodeError(f"issue type not implemented: {kind}")
         truth.append(issue)
@@ -494,6 +508,12 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
                          "allowed evidence set is required by the evaluator",
     }
 
+    # Вариативность порядка (спека 02: «Варьируйте ... порядок ...»).
+    # Мутации уже внесены и проверены; порядок на равенства и эталон не влияет.
+    rng.shuffle(ledger)
+    rng.shuffle(invoices)
+    rng.shuffle(payments)
+
     open_files = {
         "manifest.json": json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
         "ledger.csv": _csv_text(ledger, LEDGER_COLUMNS),
@@ -523,7 +543,11 @@ def _inject_duplicate(rng: random.Random, ledger: list[dict], invoices: list[dic
     """Копия кредитной строки выручки: Σдебет − Σкредит = −сумма (в базовой)."""
     candidates = [r for r in ledger if r["account"] == REVENUE and int(r["credit_minor"]) > 0]
     src = rng.choice(candidates)
-    dup = dict(src, row_id=f"row_{len(ledger) + 1:05d}")
+    # новый id в том же стиле, что и у источника, но гарантированно не занятый
+    # (без подсказывающих слов вроде "dup" — иначе дубль читается по имени)
+    stem = src["row_id"].rstrip("0123456789") or "row_"
+    digits = src["row_id"][len(stem):]
+    dup = dict(src, row_id=f"{stem}{int(digits) + 5000:0{len(digits)}d}")
     ledger.append(dup)
     amount = int(dup["credit_minor"])
     amount_base = fx.convert(amount, dup["currency"], "USD", policy_day)

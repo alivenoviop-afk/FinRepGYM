@@ -5,53 +5,53 @@
       "issue_id": "iss_partial_0001",
       "type": "partial_allocation",
       "affected_ids": [
-        "PAY-2026-0044",
-        "row_00235",
-        "row_00236"
+        "PAY-2026-0458",
+        "ln_00596",
+        "ln_00597"
       ],
-      "expected_amount_minor": 61168,
-      "currency": "USD",
+      "expected_amount_minor": 542759,
+      "currency": "KZT",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0044",
-          "ledger:row_00236",
-          "invoice:INV-2026-0053"
+          "payment:PAY-2026-0458",
+          "ledger:ln_00597",
+          "invoice:INVC-2026-0007"
         ],
         [
-          "payment:PAY-2026-0044",
-          "ledger:row_00235",
-          "ledger:row_00236"
+          "payment:PAY-2026-0458",
+          "ledger:ln_00596",
+          "ledger:ln_00597"
         ]
       ],
-      "statement": "платёж PAY-2026-0044 распределён в журнале на 104151 при документе на 165319: недостаёт 61168"
+      "statement": "платёж PAY-2026-0458 распределён в журнале на 2649941 при документе на 3192700: недостаёт 542759"
     },
     {
       "issue_id": "iss_fx_0001",
       "type": "fx_rate",
       "affected_ids": [
-        "PAY-2026-0007",
-        "row_00145",
-        "row_00146"
+        "PAY-2026-0478",
+        "ln_00644",
+        "ln_00645"
       ],
-      "expected_amount_minor": 284,
+      "expected_amount_minor": 192520,
       "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0007",
-          "ledger:row_00146",
-          "fx:2026-03-31:KZT:USD",
+          "payment:PAY-2026-0478",
+          "ledger:ln_00645",
+          "fx:2026-03-31:EUR:USD",
           "policy:fx_rate_date"
         ],
         [
-          "payment:PAY-2026-0007",
-          "ledger:row_00145",
-          "ledger:row_00146",
+          "payment:PAY-2026-0478",
+          "ledger:ln_00644",
+          "ledger:ln_00645",
           "policy:fx_rate_date"
         ]
       ],
-      "statement": "платёж PAY-2026-0007 (KZT) конвертирован по курсу на 2026-01-22 вместо policy-даты 2026-03-31: расхождение 284 USD"
+      "statement": "платёж PAY-2026-0478 (EUR) конвертирован по курсу на 2026-01-01 вместо policy-даты 2026-03-31: расхождение 192520 USD"
     }
   ]
 }

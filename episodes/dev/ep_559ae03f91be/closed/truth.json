@@ -5,21 +5,21 @@
       "issue_id": "iss_duplicate_0001",
       "type": "duplicate_entry",
       "affected_ids": [
-        "row_00078",
-        "row_00309"
+        "row_00662",
+        "row_05662"
       ],
-      "expected_amount_minor": 572100,
+      "expected_amount_minor": 2809100,
       "currency": "EUR",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "ledger:row_00309",
-          "ledger:row_00078",
-          "invoice:INV-2026-0039"
+          "ledger:row_05662",
+          "ledger:row_00662",
+          "invoice:BILL-2026-0040"
         ],
         [
-          "ledger:row_00309",
-          "ledger:row_00078"
+          "ledger:row_05662",
+          "ledger:row_00662"
         ]
       ],
       "statement": "строка выручки продублирована: две идентичные записи на одну счёт-фактуру, равенство дебет=кредит нарушено на сумму строки"
@@ -28,28 +28,28 @@
       "issue_id": "iss_fx_0001",
       "type": "fx_rate",
       "affected_ids": [
-        "PAY-2026-0041",
-        "row_00233",
-        "row_00234"
+        "PAY-2026-0627",
+        "row_00823",
+        "row_00824"
       ],
-      "expected_amount_minor": 58897,
+      "expected_amount_minor": 98990,
       "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0041",
-          "ledger:row_00234",
+          "payment:PAY-2026-0627",
+          "ledger:row_00824",
           "fx:2026-03-31:EUR:USD",
           "policy:fx_rate_date"
         ],
         [
-          "payment:PAY-2026-0041",
-          "ledger:row_00233",
-          "ledger:row_00234",
+          "payment:PAY-2026-0627",
+          "ledger:row_00823",
+          "ledger:row_00824",
           "policy:fx_rate_date"
         ]
       ],
-      "statement": "платёж PAY-2026-0041 (EUR) конвертирован по курсу на 2026-02-26 вместо policy-даты 2026-03-31: расхождение 58897 USD"
+      "statement": "платёж PAY-2026-0627 (EUR) конвертирован по курсу на 2026-01-29 вместо policy-даты 2026-03-31: расхождение 98990 USD"
     }
   ]
 }

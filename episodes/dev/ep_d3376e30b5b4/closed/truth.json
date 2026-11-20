@@ -5,54 +5,54 @@
       "issue_id": "iss_fx_0001",
       "type": "fx_rate",
       "affected_ids": [
-        "PAY-2026-0007",
-        "row_00145",
-        "row_00146"
+        "PAY-2026-0120",
+        "ln_00334",
+        "ln_00335"
       ],
-      "expected_amount_minor": 10,
+      "expected_amount_minor": 37696,
       "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0007",
-          "ledger:row_00146",
-          "fx:2026-03-31:KZT:USD",
+          "payment:PAY-2026-0120",
+          "ledger:ln_00335",
+          "fx:2026-03-31:EUR:USD",
           "policy:fx_rate_date"
         ],
         [
-          "payment:PAY-2026-0007",
-          "ledger:row_00145",
-          "ledger:row_00146",
+          "payment:PAY-2026-0120",
+          "ledger:ln_00334",
+          "ledger:ln_00335",
           "policy:fx_rate_date"
         ]
       ],
-      "statement": "платёж PAY-2026-0007 (KZT) конвертирован по курсу на 2026-01-15 вместо policy-даты 2026-03-31: расхождение 10 USD"
+      "statement": "платёж PAY-2026-0120 (EUR) конвертирован по курсу на 2026-02-05 вместо policy-даты 2026-03-31: расхождение 37696 USD"
     },
     {
       "issue_id": "iss_period_0001",
       "type": "period_cutoff",
       "affected_ids": [
-        "PAY-2026-0009",
-        "row_00149",
-        "row_00150"
+        "PAY-2026-0081",
+        "ln_00242",
+        "ln_00243"
       ],
-      "expected_amount_minor": 2815300,
-      "currency": "KZT",
+      "expected_amount_minor": 866794,
+      "currency": "EUR",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0009",
-          "ledger:row_00150",
+          "payment:PAY-2026-0081",
+          "ledger:ln_00243",
           "policy:period"
         ],
         [
-          "payment:PAY-2026-0009",
-          "ledger:row_00149",
-          "ledger:row_00150",
+          "payment:PAY-2026-0081",
+          "ledger:ln_00242",
+          "ledger:ln_00243",
           "policy:period"
         ]
       ],
-      "statement": "строки платежа PAY-2026-0009 отнесены к периоду после period_end при документе с настоящей датой"
+      "statement": "строки платежа PAY-2026-0081 отнесены к периоду после period_end при документе с настоящей датой"
     }
   ]
 }

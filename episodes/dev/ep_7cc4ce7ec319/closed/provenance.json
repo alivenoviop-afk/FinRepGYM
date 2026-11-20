@@ -29,12 +29,12 @@
       "stage": "history",
       "detail": "balanced books verified in base currency",
       "invariants": {
-        "sum_debits": 144545722,
-        "sum_credits": 144545722,
+        "sum_debits": 254282127,
+        "sum_credits": 254282127,
         "books_balanced": true,
-        "ar_balance_in_period": 30267879,
-        "invoiced_in_period": 84603669,
-        "paid_in_period": 54335790,
+        "ar_balance_in_period": 33297733,
+        "invoiced_in_period": 138293247,
+        "paid_in_period": 104995514,
         "ar_matches_documents": true,
         "base_currency": "USD"
       }
@@ -44,32 +44,32 @@
       "issue_id": "iss_s2_partial_0001",
       "type": "partial_allocation",
       "scenario": "S2",
-      "causal_change": "scenario S2: both ledger rows of payment PAY-2026-0004 reduced by 92639 USD while the document keeps its full amount"
+      "causal_change": "scenario S2: both ledger rows of payment PAY-2026-0106 reduced by 242536 USD while the document keeps its full amount"
     },
     {
       "stage": "mutation",
       "issue_id": "iss_s2_cutoff_0001",
       "type": "period_cutoff",
       "scenario": "S2",
-      "causal_change": "scenario S2: rows of payment PAY-2026-0004 re-dated from 2026-03-31T11:59:59+05:00 to 2026-04-02T11:59:59+05:00 after partial allocation; document unchanged"
+      "causal_change": "scenario S2: rows of payment PAY-2026-0106 re-dated from 2026-03-30T20:41:00+05:00 to 2026-04-02T11:59:59+05:00 after partial allocation; document unchanged"
     },
     {
       "stage": "verify",
       "invariants_after": {
-        "sum_debits": 144453083,
-        "sum_credits": 144453083,
+        "sum_debits": 254039591,
+        "sum_credits": 254039591,
         "books_balanced": true,
-        "ar_balance_in_period": 30885473,
-        "invoiced_in_period": 84603669,
-        "paid_in_period": 54335790,
+        "ar_balance_in_period": 34267877,
+        "invoiced_in_period": 138293247,
+        "paid_in_period": 104995514,
         "ar_matches_documents": false,
         "base_currency": "USD"
       },
       "declared_discrepancies": {
         "books_imbalance": 0,
         "declared_imbalance": 0,
-        "ar_period_discrepancy": 617594,
-        "declared_ar_discrepancy": 617594,
+        "ar_period_discrepancy": 970144,
+        "declared_ar_discrepancy": 970144,
         "verified": true
       }
     }
@@ -78,61 +78,61 @@
     {
       "issue_id": "iss_s2_partial_0001",
       "type": "partial_allocation",
-      "causal_change": "scenario S2: both ledger rows of payment PAY-2026-0004 reduced by 92639 USD while the document keeps its full amount",
+      "causal_change": "scenario S2: both ledger rows of payment PAY-2026-0106 reduced by 242536 USD while the document keeps its full amount",
       "before": {
-        "ledger_allocated_minor": 617594
+        "ledger_allocated_minor": 970144
       },
       "after": {
-        "ledger_allocated_minor": 524955
+        "ledger_allocated_minor": 727608
       },
-      "expected_amount_minor": 92639,
+      "expected_amount_minor": 242536,
       "currency": "USD",
       "effect_imbalance": 0,
-      "effect_ar_diff": 92639,
+      "effect_ar_diff": 242536,
       "affected_ids": [
-        "PAY-2026-0004",
-        "row_00139",
-        "row_00140"
+        "PAY-2026-0106",
+        "rec_00268",
+        "rec_00269"
       ]
     },
     {
       "issue_id": "iss_s2_cutoff_0001",
       "type": "period_cutoff",
-      "causal_change": "scenario S2: rows of payment PAY-2026-0004 re-dated from 2026-03-31T11:59:59+05:00 to 2026-04-02T11:59:59+05:00 after partial allocation; document unchanged",
+      "causal_change": "scenario S2: rows of payment PAY-2026-0106 re-dated from 2026-03-30T20:41:00+05:00 to 2026-04-02T11:59:59+05:00 after partial allocation; document unchanged",
       "before": {
-        "rows_timestamp": "2026-03-31T11:59:59+05:00"
+        "rows_timestamp": "2026-03-30T20:41:00+05:00"
       },
       "after": {
         "rows_timestamp": "2026-04-02T11:59:59+05:00"
       },
-      "expected_amount_minor": 608400,
+      "expected_amount_minor": 955701,
       "currency": "EUR",
       "effect_imbalance": 0,
-      "effect_ar_diff": 524955,
+      "effect_ar_diff": 727608,
       "affected_ids": [
-        "PAY-2026-0004",
-        "row_00139",
-        "row_00140"
+        "PAY-2026-0106",
+        "rec_00268",
+        "rec_00269"
       ]
     }
   ],
   "invariants_before": {
-    "sum_debits": 144545722,
-    "sum_credits": 144545722,
+    "sum_debits": 254282127,
+    "sum_credits": 254282127,
     "books_balanced": true,
-    "ar_balance_in_period": 30267879,
-    "invoiced_in_period": 84603669,
-    "paid_in_period": 54335790,
+    "ar_balance_in_period": 33297733,
+    "invoiced_in_period": 138293247,
+    "paid_in_period": 104995514,
     "ar_matches_documents": true,
     "base_currency": "USD"
   },
   "invariants_after": {
-    "sum_debits": 144453083,
-    "sum_credits": 144453083,
+    "sum_debits": 254039591,
+    "sum_credits": 254039591,
     "books_balanced": true,
-    "ar_balance_in_period": 30885473,
-    "invoiced_in_period": 84603669,
-    "paid_in_period": 54335790,
+    "ar_balance_in_period": 34267877,
+    "invoiced_in_period": 138293247,
+    "paid_in_period": 104995514,
     "ar_matches_documents": false,
     "base_currency": "USD"
   }

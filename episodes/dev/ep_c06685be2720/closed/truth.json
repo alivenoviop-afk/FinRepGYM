@@ -5,21 +5,21 @@
       "issue_id": "iss_duplicate_0001",
       "type": "duplicate_entry",
       "affected_ids": [
-        "row_00020",
-        "row_00261"
+        "ln_00765",
+        "ln_05765"
       ],
-      "expected_amount_minor": 3495500,
+      "expected_amount_minor": 1829000,
       "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "ledger:row_00261",
-          "ledger:row_00020",
-          "invoice:INV-2026-0010"
+          "ledger:ln_05765",
+          "ledger:ln_00765",
+          "invoice:FACT-2026-0034"
         ],
         [
-          "ledger:row_00261",
-          "ledger:row_00020"
+          "ledger:ln_05765",
+          "ledger:ln_00765"
         ]
       ],
       "statement": "строка выручки продублирована: две идентичные записи на одну счёт-фактуру, равенство дебет=кредит нарушено на сумму строки"
@@ -28,26 +28,26 @@
       "issue_id": "iss_partial_0001",
       "type": "partial_allocation",
       "affected_ids": [
-        "PAY-2026-0012",
-        "row_00147",
-        "row_00148"
+        "PAY-2026-0730",
+        "ln_00888",
+        "ln_00889"
       ],
-      "expected_amount_minor": 511140,
-      "currency": "USD",
+      "expected_amount_minor": 112239,
+      "currency": "KZT",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0012",
-          "ledger:row_00148",
-          "invoice:INV-2026-0012"
+          "payment:PAY-2026-0730",
+          "ledger:ln_00889",
+          "invoice:FACT-2026-0031"
         ],
         [
-          "payment:PAY-2026-0012",
-          "ledger:row_00147",
-          "ledger:row_00148"
+          "payment:PAY-2026-0730",
+          "ledger:ln_00888",
+          "ledger:ln_00889"
         ]
       ],
-      "statement": "платёж PAY-2026-0012 распределён в журнале на 3139860 при документе на 3651000: недостаёт 511140"
+      "statement": "платёж PAY-2026-0730 распределён в журнале на 422234 при документе на 534473: недостаёт 112239"
     }
   ]
 }

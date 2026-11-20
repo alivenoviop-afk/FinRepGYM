@@ -5,21 +5,21 @@
       "issue_id": "iss_duplicate_0001",
       "type": "duplicate_entry",
       "affected_ids": [
-        "row_00098",
-        "row_00275"
+        "row_00882",
+        "row_05882"
       ],
-      "expected_amount_minor": 822000,
+      "expected_amount_minor": 3491000,
       "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "ledger:row_00275",
-          "ledger:row_00098",
-          "invoice:INV-2026-0049"
+          "ledger:row_05882",
+          "ledger:row_00882",
+          "invoice:FACT-2026-0023"
         ],
         [
-          "ledger:row_00275",
-          "ledger:row_00098"
+          "ledger:row_05882",
+          "ledger:row_00882"
         ]
       ],
       "statement": "строка выручки продублирована: две идентичные записи на одну счёт-фактуру, равенство дебет=кредит нарушено на сумму строки"
@@ -28,27 +28,27 @@
       "issue_id": "iss_period_0001",
       "type": "period_cutoff",
       "affected_ids": [
-        "PAY-2026-0020",
-        "row_00169",
-        "row_00170"
+        "PAY-2026-0876",
+        "row_01041",
+        "row_01042"
       ],
-      "expected_amount_minor": 822000,
+      "expected_amount_minor": 1295300,
       "currency": "KZT",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0020",
-          "ledger:row_00170",
+          "payment:PAY-2026-0876",
+          "ledger:row_01042",
           "policy:period"
         ],
         [
-          "payment:PAY-2026-0020",
-          "ledger:row_00169",
-          "ledger:row_00170",
+          "payment:PAY-2026-0876",
+          "ledger:row_01041",
+          "ledger:row_01042",
           "policy:period"
         ]
       ],
-      "statement": "строки платежа PAY-2026-0020 отнесены к периоду после period_end при документе с настоящей датой"
+      "statement": "строки платежа PAY-2026-0876 отнесены к периоду после period_end при документе с настоящей датой"
     }
   ]
 }

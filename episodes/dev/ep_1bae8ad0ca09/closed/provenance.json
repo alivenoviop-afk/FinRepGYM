@@ -29,12 +29,12 @@
       "stage": "history",
       "detail": "balanced books verified in base currency",
       "invariants": {
-        "sum_debits": 181832896,
-        "sum_credits": 181832896,
+        "sum_debits": 201694134,
+        "sum_credits": 201694134,
         "books_balanced": true,
-        "ar_balance_in_period": 45816705,
-        "invoiced_in_period": 109912818,
-        "paid_in_period": 64096113,
+        "ar_balance_in_period": 46433758,
+        "invoiced_in_period": 121377901,
+        "paid_in_period": 74944143,
         "ar_matches_documents": true,
         "base_currency": "USD"
       }
@@ -42,20 +42,20 @@
     {
       "stage": "verify",
       "invariants_after": {
-        "sum_debits": 181738639,
-        "sum_credits": 181738639,
+        "sum_debits": 200730522,
+        "sum_credits": 200730522,
         "books_balanced": true,
-        "ar_balance_in_period": 45910962,
-        "invoiced_in_period": 109912818,
-        "paid_in_period": 64096113,
+        "ar_balance_in_period": 47397370,
+        "invoiced_in_period": 121377901,
+        "paid_in_period": 74944143,
         "ar_matches_documents": false,
         "base_currency": "USD"
       },
       "declared_discrepancies": {
         "books_imbalance": 0,
         "declared_imbalance": 0,
-        "ar_period_discrepancy": 94257,
-        "declared_ar_discrepancy": 94257,
+        "ar_period_discrepancy": 963612,
+        "declared_ar_discrepancy": 963612,
         "verified": true
       }
     }
@@ -64,43 +64,43 @@
     {
       "issue_id": "iss_partial_0001",
       "type": "partial_allocation",
-      "causal_change": "payment PAY-2026-0014 document keeps 512509, both ledger rows reduced by 87126",
+      "causal_change": "payment PAY-2026-0134 document keeps 2470800, both ledger rows reduced by 963612",
       "before": {
-        "payment_amount_minor": 512509,
-        "ledger_allocated_minor": 512509
+        "payment_amount_minor": 2470800,
+        "ledger_allocated_minor": 2470800
       },
       "after": {
-        "payment_amount_minor": 512509,
-        "ledger_allocated_minor": 425383
+        "payment_amount_minor": 2470800,
+        "ledger_allocated_minor": 1507188
       },
-      "expected_amount_minor": 87126,
-      "currency": "EUR",
+      "expected_amount_minor": 963612,
+      "currency": "USD",
       "effect_imbalance": 0,
-      "effect_ar_diff": 94257,
+      "effect_ar_diff": 963612,
       "affected_ids": [
-        "PAY-2026-0014",
-        "row_00159",
-        "row_00160"
+        "PAY-2026-0134",
+        "row_00289",
+        "row_00290"
       ]
     }
   ],
   "invariants_before": {
-    "sum_debits": 181832896,
-    "sum_credits": 181832896,
+    "sum_debits": 201694134,
+    "sum_credits": 201694134,
     "books_balanced": true,
-    "ar_balance_in_period": 45816705,
-    "invoiced_in_period": 109912818,
-    "paid_in_period": 64096113,
+    "ar_balance_in_period": 46433758,
+    "invoiced_in_period": 121377901,
+    "paid_in_period": 74944143,
     "ar_matches_documents": true,
     "base_currency": "USD"
   },
   "invariants_after": {
-    "sum_debits": 181738639,
-    "sum_credits": 181738639,
+    "sum_debits": 200730522,
+    "sum_credits": 200730522,
     "books_balanced": true,
-    "ar_balance_in_period": 45910962,
-    "invoiced_in_period": 109912818,
-    "paid_in_period": 64096113,
+    "ar_balance_in_period": 47397370,
+    "invoiced_in_period": 121377901,
+    "paid_in_period": 74944143,
     "ar_matches_documents": false,
     "base_currency": "USD"
   }

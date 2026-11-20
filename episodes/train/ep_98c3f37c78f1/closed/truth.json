@@ -5,52 +5,52 @@
       "issue_id": "iss_s2_partial_0001",
       "type": "partial_allocation",
       "affected_ids": [
-        "PAY-2026-0011",
-        "row_00173",
-        "row_00174"
+        "PAY-2026-0819",
+        "row_01015",
+        "row_01016"
       ],
-      "expected_amount_minor": 1480,
+      "expected_amount_minor": 600,
       "currency": "USD",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0011",
-          "ledger:row_00174",
-          "invoice:INV-2026-0012"
+          "payment:PAY-2026-0819",
+          "ledger:row_01016",
+          "invoice:FACT-2026-0040"
         ],
         [
-          "payment:PAY-2026-0011",
-          "ledger:row_00173",
-          "ledger:row_00174"
+          "payment:PAY-2026-0819",
+          "ledger:row_01015",
+          "ledger:row_01016"
         ]
       ],
-      "statement": "S2: платёж PAY-2026-0011 (KZT) распределён в журнале на 2220 USD при документе, эквивалент 3700 USD: недостаёт 1480"
+      "statement": "S2: платёж PAY-2026-0819 (KZT) распределён в журнале на 900 USD при документе, эквивалент 1500 USD: недостаёт 600"
     },
     {
       "issue_id": "iss_s2_cutoff_0001",
       "type": "period_cutoff",
       "affected_ids": [
-        "PAY-2026-0011",
-        "row_00173",
-        "row_00174"
+        "PAY-2026-0819",
+        "row_01015",
+        "row_01016"
       ],
-      "expected_amount_minor": 1981557,
+      "expected_amount_minor": 803525,
       "currency": "KZT",
       "amount_tolerance_minor": 0,
       "evidence_sets": [
         [
-          "payment:PAY-2026-0011",
-          "ledger:row_00174",
+          "payment:PAY-2026-0819",
+          "ledger:row_01016",
           "policy:period"
         ],
         [
-          "payment:PAY-2026-0011",
-          "ledger:row_00173",
-          "ledger:row_00174",
+          "payment:PAY-2026-0819",
+          "ledger:row_01015",
+          "ledger:row_01016",
           "policy:period"
         ]
       ],
-      "statement": "строки платежа PAY-2026-0011 отнесены к периоду после period_end при документе с настоящей датой"
+      "statement": "строки платежа PAY-2026-0819 отнесены к периоду после period_end при документе с настоящей датой"
     }
   ]
 }

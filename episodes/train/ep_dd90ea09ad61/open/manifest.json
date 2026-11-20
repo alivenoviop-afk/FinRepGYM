@@ -12,12 +12,12 @@
   "period_end": "2026-03-31T23:59:59+05:00",
   "timezone": "Asia/Almaty",
   "utc_offset": "+05:00",
-  "n_records": 266,
-  "n_documents": 125,
+  "n_records": 250,
+  "n_documents": 118,
   "tables": {
-    "ledger": 266,
+    "ledger": 250,
     "invoices": 65,
-    "payments": 60,
+    "payments": 53,
     "fx": 84
   },
   "rounding": "integer minor units; FX rates are decimal strings, half-up to minor unit on conversion",

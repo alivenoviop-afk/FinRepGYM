@@ -169,12 +169,14 @@ def main() -> int:
     check("0 <= ошибок <= 12", len(json.loads(big["closed"]["truth.json"])["issues"]) <= 12)
 
     # 7. парные проверки: порядок + смена ID -------------------------------- #
-    print("\n7) Парные проверки (порядок строк + переименование ID)")
-    pairs = 10
+    # Число пар = 20 (спека: «Ещё 20 парных проверок меняют порядок и ID»).
+    print("\n7) Парные проверки (порядок строк + переименование ID), 20 пар")
+    pairs = 20
+    pair_seeds = (list(seeds) + [6100 + i for i in range(pairs)])[:pairs]
     four = ["duplicate_entry", "period_cutoff", "partial_allocation", "fx_rate"]
     ok_pairs = 0
     pair_errors: list[str] = []
-    for seed in seeds[:pairs]:
+    for seed in pair_seeds:
         tmp = None
         try:
             files = generate(seed, {"n_invoices": 25, "issue_types": four, "n_issues": 4})
@@ -246,6 +248,12 @@ def main() -> int:
     print(f"  | python         : {sys.version.split()[0]} "
           f"({platform.python_implementation()})")
     print(f"  | платформа      : {platform.platform()}")
+
+    # Размер решения (спека 07: до 1 ГБ на решение; без .git и мусора)
+    total_bytes = sum(f.stat().st_size for f in ROOT.rglob("*")
+                      if f.is_file() and ".git" not in f.parts and "__pycache__" not in f.parts)
+    check("размер решения < 1 ГБ (спека 07)", total_bytes < 1024 ** 3,
+          f"{total_bytes / (1024 * 1024):.1f} МБ (лимит 1024 МБ)")
 
     # итог ------------------------------------------------------------------- #
     passed = sum(1 for ok, _ in RESULTS if ok)

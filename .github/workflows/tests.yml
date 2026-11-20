@@ -27,6 +27,19 @@ jobs:
       - name: Репетиция закрытой проверки (20 эпизодов x 4 политики)
         run: python scripts/organizer_check.py
 
+      # Замер ресурсов (спека 07: 2 CPU, 4 ГБ RAM, 1 ГБ на решение)
+      - name: Замер памяти и размера (лимиты регламента)
+        run: |
+          /usr/bin/time -v python scripts/check.py > /dev/null 2> time.txt || true
+          grep -E "Maximum resident set size|Elapsed \(wall" time.txt
+          RSS=$(grep "Maximum resident" time.txt | grep -oE "[0-9]+" | head -1)
+          SIZE_KB=$(du -sk . | cut -f1)
+          echo "RSS: ${RSS} байт (лимит 4 ГБ)"
+          echo "Размер решения: $((SIZE_KB / 1024)) МБ (лимит 1024 МБ)"
+          test -n "$RSS"
+          test "$RSS" -lt $((4 * 1024 * 1024 * 1024))
+          test "$SIZE_KB" -lt $((1024 * 1024))
+
   container:
     # Инструкция контейнера (пункт сдачи) проверяется здесь же:
     # образ собирается из Python 3.11 и проверка запускается ВНУТРИ него.

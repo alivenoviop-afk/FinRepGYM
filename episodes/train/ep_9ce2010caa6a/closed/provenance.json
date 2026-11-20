@@ -30,12 +30,12 @@
       "stage": "history",
       "detail": "balanced books verified in base currency",
       "invariants": {
-        "sum_debits": 143120727,
-        "sum_credits": 143120727,
+        "sum_debits": 179557334,
+        "sum_credits": 179557334,
         "books_balanced": true,
-        "ar_balance_in_period": 34531161,
-        "invoiced_in_period": 88224147,
-        "paid_in_period": 53692986,
+        "ar_balance_in_period": 44629148,
+        "invoiced_in_period": 110195537,
+        "paid_in_period": 65566389,
         "ar_matches_documents": true,
         "base_currency": "USD"
       }
@@ -43,12 +43,12 @@
     {
       "stage": "verify",
       "invariants_after": {
-        "sum_debits": 143120727,
-        "sum_credits": 143120727,
+        "sum_debits": 179557334,
+        "sum_credits": 179557334,
         "books_balanced": true,
-        "ar_balance_in_period": 34531161,
-        "invoiced_in_period": 88224147,
-        "paid_in_period": 53692986,
+        "ar_balance_in_period": 44629148,
+        "invoiced_in_period": 110195537,
+        "paid_in_period": 65566389,
         "ar_matches_documents": true,
         "base_currency": "USD"
       },
@@ -63,22 +63,22 @@
   ],
   "mutations": [],
   "invariants_before": {
-    "sum_debits": 143120727,
-    "sum_credits": 143120727,
+    "sum_debits": 179557334,
+    "sum_credits": 179557334,
     "books_balanced": true,
-    "ar_balance_in_period": 34531161,
-    "invoiced_in_period": 88224147,
-    "paid_in_period": 53692986,
+    "ar_balance_in_period": 44629148,
+    "invoiced_in_period": 110195537,
+    "paid_in_period": 65566389,
     "ar_matches_documents": true,
     "base_currency": "USD"
   },
   "invariants_after": {
-    "sum_debits": 143120727,
-    "sum_credits": 143120727,
+    "sum_debits": 179557334,
+    "sum_credits": 179557334,
     "books_balanced": true,
-    "ar_balance_in_period": 34531161,
-    "invoiced_in_period": 88224147,
-    "paid_in_period": 53692986,
+    "ar_balance_in_period": 44629148,
+    "invoiced_in_period": 110195537,
+    "paid_in_period": 65566389,
     "ar_matches_documents": true,
     "base_currency": "USD"
   }
