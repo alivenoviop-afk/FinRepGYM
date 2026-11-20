@@ -6,16 +6,29 @@ on:
 
 jobs:
   unittest:
-    runs-on: ubuntu-latest
+    # Матрица 3 ОС x 2 версии Python. Главная цель — одна и та же эталонная
+    # константа отпечатка (seed=42) совпадает везде: формальное доказательство
+    # спеки 04 «одинаковые seed, config, ВЕРСИЯ и действия воспроизводят записи»
+    # независимо от ОС, железа и версии Python.
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
 
-      # Официальная проверка требует Python 3.11 — гоняем именно его
+      # Внешних зависимостей нет: только стандартная библиотека, pip не нужен
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
 
-      # Внешних зависимостей нет: только стандартная библиотека, pip не нужен
+      # Кросс-платформенный контроль: один хеш на Windows, Linux и macOS
+      - name: Отпечаток эпизода seed=42 (одна константа на всех ОС и версиях)
+        run: python scripts/golden_hash.py
+
       - name: Юнит-тесты (контракт, данные, награда, атаки, пермутации)
         run: python -m unittest discover -s tests -v
 
@@ -37,14 +50,25 @@ jobs:
 
       # Марафон: оценки жюри подряд (стабильность и ресурсы)
       - name: Марафон оценок жюри (3 подряд)
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         run: python scripts/jury_marathon.py --runs 3
+
+      - name: Марафон оценок жюри (1 оценка на этой платформе)
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11') }}
+        run: python scripts/jury_marathon.py --runs 1
 
       # Офлайн-доказательство: без site-packages (сторонних пакетов нет вообще)
       - name: Офлайн-режим (python -S, без site-packages)
         run: python -S -m unittest discover -s tests
 
+      # Измеренные запасы до лимитов регламента (60 с / 4 ГБ / 100 шагов / 1 ГБ)
+      - name: Бенчмарк запасов (время, память, размер)
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+        run: python scripts/benchmark.py
+
       # Замер ресурсов (спека 07: 2 CPU, 4 ГБ RAM, 1 ГБ на решение)
       - name: Замер памяти и размера (лимиты регламента)
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         run: |
           /usr/bin/time -v python scripts/check.py > /dev/null 2> time.txt || true
           grep -E "Maximum resident set size|Elapsed \(wall" time.txt

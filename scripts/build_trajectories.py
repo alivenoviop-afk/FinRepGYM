@@ -8,6 +8,7 @@
                             observation, reward, terminated, truncated}
                             (наблюдения без закрытого эталона — проверяется сканером);
   * artifacts/diagnostics.csv — сырые метрики каждого прогона;
+  * artifacts/diagnostics_by_type.csv — те же метрики в разбивке по 4 типам ошибок;
   * docs/DIAGNOSTICS.md   — агрегат P, R, F1, возврат, шаги, время (требование
                             спеки: «отдельно покажите ... как диагностику»).
 """
@@ -59,6 +60,8 @@ def main() -> int:
     ARTIFACTS.mkdir(exist_ok=True)
     rows: list[dict] = []
     leak_hits: list[str] = []
+    # Разбивка по типам ошибок: {(политика, тип): {"tp": …, "fn": …}}
+    type_rows: dict[tuple[str, str], dict[str, int]] = {}
 
     with TRAJECTORIES.open("w", encoding="utf-8") as fh:
         for entry in entries:
@@ -89,6 +92,13 @@ def main() -> int:
                     "elapsed_s": round(elapsed, 4),
                 })
 
+                # какие именно типы ошибок политика нашла, а какие пропустила
+                matched = set(report["metrics"].get("matched_truth_ids") or [])
+                for issue in env.evaluator_truth():
+                    acc = type_rows.setdefault((policy_name, issue["type"]),
+                                               {"tp": 0, "fn": 0})
+                    acc["tp" if issue["issue_id"] in matched else "fn"] += 1
+
                 for rec in result["trajectory"]:
                     obs_blob = json.dumps(rec["observation"], ensure_ascii=False)
                     for token in FORBIDDEN_IN_OBSERVATION:
@@ -112,6 +122,18 @@ def main() -> int:
         writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
+
+    # ---- разбивка по типам ошибок ---------------------------------------- #
+    type_csv = ARTIFACTS / "diagnostics_by_type.csv"
+    with type_csv.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["policy", "issue_type", "n_issues",
+                                                "tp", "fn", "recall"])
+        writer.writeheader()
+        for (policy_name, issue_type), acc in sorted(type_rows.items()):
+            n = acc["tp"] + acc["fn"]
+            writer.writerow({"policy": policy_name, "issue_type": issue_type,
+                             "n_issues": n, "tp": acc["tp"], "fn": acc["fn"],
+                             "recall": round(acc["tp"] / n, 4) if n else ""})
 
     # ---- агрегат по политикам -------------------------------------------- #
     def agg(policy: str) -> dict:
@@ -146,6 +168,41 @@ def main() -> int:
 
     clean_rows = [r for r in rows if r["n_issues"] == 0]
     erroneous = [r for r in rows if r["n_issues"] > 0]
+
+    # ---- раздел «по типам ошибок» ---------------------------------------- #
+    lines += [
+        "",
+        "## По типам ошибок (кто что находит и что теряет)",
+        "",
+        "Один и тот же эталон, разложенный по четырём типам: полнота (recall) "
+        "показывает, какие ошибки политика действительно ловит. Сырые значения: "
+        "`artifacts/diagnostics_by_type.csv`.",
+        "",
+        "| Политика | Тип ошибки | Эталонных | TP | Пропущено | Полнота |",
+        "|---|---|---:|---:|---:|---:|",
+    ]
+    for (policy_name, issue_type), acc in sorted(type_rows.items()):
+        n = acc["tp"] + acc["fn"]
+        recall = acc["tp"] / n if n else 0.0
+        lines.append(f"| {policy_name} | `{issue_type}` | {n} | {acc['tp']} | "
+                     f"{acc['fn']} | {recall:.2f} |")
+    lines += [
+        "",
+        "**Как читать разбивку:**",
+        "",
+        "- `oracle` обязан давать полноту 1.00 по всем четырём типам — это проверка, "
+        "что среда вообще допускает максимум награды для каждого типа.",
+        "- `reconciliation` показывает, что алгоритмическая сверка закрывает все "
+        "четыре типа без пропусков (включая сценарии S1/S2, где две ошибки делят "
+        "один платёж).",
+        "- `mark_all` и `random` дают 0.00 по всем типам: ни угаданный ID, ни "
+        "«пометить всё» не считаются находкой без полного комплекта доказательств.",
+        "- Сложность взаимодействия видна в тестах, а не в этой таблице: наивный "
+        "детектор по датам ловит `period_cutoff` и теряет вторую ошибку того же "
+        "платежа (`test_naive_date_only_detector_misses_the_other_errors`).",
+        "",
+    ]
+
     lines += [
         "",
         "## Как читать",
@@ -172,6 +229,7 @@ def main() -> int:
     print(f"trajectories.jsonl : {TRAJECTORIES.stat().st_size // 1024} КБ, "
           f"{written} записей (3 политики; оракул — только в диагностике)")
     print(f"artifacts/diagnostics.csv : {len(rows)} строк")
+    print(f"artifacts/diagnostics_by_type.csv : {len(type_rows)} строк (4 типа x политики)")
     print(f"docs/DIAGNOSTICS.md : агрегат по {len(order)} политикам")
     for name in order:
         a = agg(name)

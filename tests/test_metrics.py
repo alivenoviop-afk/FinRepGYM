@@ -107,6 +107,92 @@ class TestMatching(unittest.TestCase):
         self.assertEqual(straight, run([2, 0, 3, 1]), "перемешанный порядок")
 
 
+FOUR_TYPES_CFG = {"n_invoices": 25,
+                  "issue_types": ["duplicate_entry", "period_cutoff",
+                                  "partial_allocation", "fx_rate"],
+                  "n_issues": 4}
+
+
+def correct_findings(truth: list[dict]) -> list[dict]:
+    """Ответ, собранный из эталона (только для тестов награды)."""
+    return [{"type": i["type"], "affected_ids": sorted(i["affected_ids"]),
+             "claimed_amount_minor": i["expected_amount_minor"],
+             "currency": i["currency"],
+             "evidence_ids": list(i["evidence_sets"][0]),
+             "explanation": "x"} for i in truth]
+
+
+def submit_once(findings: list[dict], cfg: dict = FOUR_TYPES_CFG, seed: int = SEED):
+    env = AuditEnv()
+    env.reset(seed=seed, config=cfg)
+    _, reward, terminated, truncated, _ = env.step(
+        {"action": "submit", "episode_id": env._manifest["episode_id"],
+         "findings": findings})
+    return reward, env.evaluator_report()["metrics"], terminated, truncated
+
+
+class TestRewardMonotonicity(unittest.TestCase):
+    """Награда монотонна по качеству ответа: по этой среде можно обучать агента.
+
+    Проверяется не «оракул получает 1», а форма самого сигнала: каждая верная
+    находка награду РАСТИТ, каждая ложная или недоказанная — снижает.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        env = AuditEnv()
+        env.reset(seed=SEED, config=FOUR_TYPES_CFG)
+        cls.truth = env.evaluator_truth()
+
+    def setUp(self):
+        self.assertEqual(len(self.truth), 4, "нужны все четыре типа ошибок")
+        self.findings = correct_findings(self.truth)
+
+    def test_reward_grows_with_each_correct_finding(self):
+        rewards = []
+        for k in range(len(self.findings) + 1):
+            reward, m, terminated, truncated = submit_once(self.findings[:k])
+            self.assertTrue(terminated and not truncated)
+            self.assertEqual((m["tp"], m["fp"], m["fn"]),
+                             (k, 0, len(self.truth) - k))
+            rewards.append(reward)
+        for k, (before, after) in enumerate(zip(rewards, rewards[1:]), start=1):
+            self.assertLess(before, after,
+                            f"награда не растёт при добавлении {k}-й верной находки")
+        self.assertLess(rewards[0], 0.0, "пустой ответ на грязных книгах — штраф")
+        self.assertGreater(rewards[-1], 0.9, "полный верный ответ почти +1")
+
+    def test_false_finding_lowers_reward(self):
+        full, full_m, *_ = submit_once(self.findings)
+        other = ("period_cutoff" if self.findings[0]["type"] != "period_cutoff"
+                 else "duplicate_entry")
+        bogus = dict(self.findings[0], type=other)   # те же ID, неверный тип
+        reward, m, *_ = submit_once(self.findings + [bogus])
+        self.assertEqual((m["tp"], m["fp"]), (full_m["tp"], 1))
+        self.assertLess(reward, full, "ложная находка обязана снижать награду")
+
+    def test_weakened_evidence_lowers_reward(self):
+        full, *_ = submit_once(self.findings)
+        weak = [dict(self.findings[0],
+                     evidence_ids=self.findings[0]["evidence_ids"][:1]),
+                *self.findings[1:]]
+        reward, m, *_ = submit_once(weak)
+        self.assertEqual((m["tp"], m["fp"], m["fn"]), (3, 1, 1))
+        self.assertLess(reward, full, "неполное доказательство обязано снижать награду")
+
+    def test_spamming_duplicates_does_not_beat_the_honest_answer(self):
+        full, *_ = submit_once(self.findings)
+        spam, m, *_ = submit_once(self.findings * 3)
+        self.assertEqual(m["tp"], len(self.truth), "сопоставление взаимно однозначное")
+        self.assertLess(spam, full, "дубликаты не должны давать выгоды")
+
+    def test_every_reward_stays_inside_bounds(self):
+        for findings in ([], self.findings[:1], self.findings, self.findings * 3):
+            reward, *_ = submit_once(findings)
+            self.assertGreaterEqual(reward, -1.0)
+            self.assertLessEqual(reward, 1.0)
+
+
 class TestMetricEdgeCases(unittest.TestCase):
     def test_both_empty_is_perfect(self):
         m = compute_metrics([], [])

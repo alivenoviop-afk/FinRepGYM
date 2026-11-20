@@ -7,7 +7,7 @@
 > **Статус: 19.11.2026** — контракт, все 4 типа ошибок, мультивалютность (USD/EUR/KZT),
 > сценарии взаимодействия S1/S2, возвраты, воспроизводимость и обобщение (парные проверки),
 > matcher, награда, 4 политики, **10 train + 10 dev эпизодов, траектории 4 политик,
-> диагностика P/R/F1/возврат/шаги/время**. **117 тестов, `check.py` 32/32,
+> диагностика P/R/F1/возврат/шаги/время**. **124 тестов, `check.py` 32/32,
 > репетиция закрытой проверки 20×4 (`organizer_check.py`), 20 парных проверок.**
 > Осталось: контейнер (Dockerfile), записка, демо и защита (22.11, 12:00).
 
@@ -18,6 +18,7 @@
 
 ```bash
 python scripts/demo_all.py              # ДЕМО ДЛЯ ЖЮРИ: весь прогон с репликами (~20 с)
+python scripts/demo_all.py --srt demo.srt   # то же + субтитры с реальными таймингами
 python scripts/build_episodes.py        # 10 train + 10 dev эпизодов + реестр
 python scripts/build_trajectories.py    # trajectories.jsonl + docs/DIAGNOSTICS.md
 python scripts/check.py                 # единая проверка жюри: 32/32
@@ -26,12 +27,14 @@ python scripts/jury_conditions.py       # слепая проверка на у�
 python scripts/jury_marathon.py        # 10 оценок жюри ПОДРЯД (200 эпизодов, 2 ядра): 10/10
 python scripts/organizer_check.py       # репетиция закрытой проверки: 20 эпизодов x 4 политики
 python scripts/demo.py                  # демо скриптовой политики
-python -m unittest discover -s tests -v # 117 тестов
-python scripts/golden_hash.py                  # отпечаток seed=42: байт-в-байт на любой ОС
+python -m unittest discover -s tests -v # 124 теста
+python scripts/golden_hash.py           # отпечаток seed=42: байт-в-байт на любой ОС
+python scripts/benchmark.py             # измеренные запасы до лимитов (время, память, шаги)
 ```
 
 Зависимости: **только стандартная библиотека Python 3.11+** (официальная проверка без сети).
-Локально проверено на Python 3.12, код совместим с 3.11; CI гоняет обе команды на 3.11.
+Локально проверено на Python 3.12; CI гоняет все проверки на матрице
+**Linux / Windows / macOS x Python 3.11 и 3.12** — отпечаток эпизода везде одинаков.
 
 ## Инструкция контейнера
 
@@ -39,7 +42,7 @@ python scripts/golden_hash.py                  # отпечаток seed=42: б�
 
 ```bash
 docker build -t finrepgym .                                     # сборка (сеть нужна 1 раз — для базового образа)
-docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 117 тестов + 32/32
+docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 124 тестов + 32/32
 docker run --rm finrepgym python scripts/demo_all.py --fast     # демо для жюри
 docker run --rm finrepgym python scripts/demo.py --policy oracle # одна политика
 ```
@@ -64,18 +67,20 @@ FinRepGYM/
 │   ├── check.py                 # единая команда проверки (32 проверки)
 │   ├── demo_all.py              # ДЕМО ДЛЯ ЖЮРИ: 6 шагов с репликами
 │   ├── demo.py                  # показ работы среды
-│   └── golden_hash.py           # отпечаток seed=42 (кросс-платформенный контроль)
+│   ├── golden_hash.py           # отпечаток seed=42 (кросс-платформенный контроль)
+│   └── benchmark.py             # измеренные запасы до лимитов регламента
 ├── Dockerfile                   # Python 3.11-slim, без зависимостей, CMD = проверка
 ├── .dockerignore                # без .git и мусора
 ├── episodes/
 │   ├── registry.json            # реестр: split, seed, config, размеры, проверки
 │   ├── train/<episode_id>/      # 10 эпизодов: open/ + closed/
 │   └── dev/<episode_id>/        # 10 эпизодов
-├── trajectories.jsonl           # 839 записей: 3 «агентских» политики x 20 эпизодов
+├── trajectories.jsonl           # 846 записей: 3 «агентских» политики x 20 эпизодов
 │                                #   (оракул — только для оценщика: спека 06)
-├── artifacts/diagnostics.csv    # сырые метрики каждого прогона
-├── docs/                        # DESIGN_NOTE, SCHEMAS, SELF_REPORT, PRESENTATION_BRIEF, ARCHITECTURE, RULES, DIAGNOSTICS, SUMMARY
-└── tests/                       # 117 тестов
+├── artifacts/                   # diagnostics.csv, diagnostics_by_type.csv, benchmark.csv, demo.srt
+├── docs/                        # DESIGN_NOTE, SCHEMAS, SELF_REPORT, PRESENTATION_BRIEF, ARCHITECTURE,
+│                                #   RULES, DIAGNOSTICS, SUMMARY, JURY_FAQ, VIDEO_SCRIPT
+└── tests/                       # 124 теста
 ```
 
 ## Эпизоды, траектории и диагностика
@@ -90,7 +95,7 @@ FN = 0, в открытых файлах нет закрытого эталон�
 
 **Траектории (пункт сдачи `trajectories.jsonl`).** Диагностика покрывает 20 эпизодов ×
 4 политики = 80 прогонов; в сами траектории входят **60 прогонов трёх «агентских»
-политик** (reconciliation, mark_all, random — 839 записей), потому что спека требует:
+политик** (reconciliation, mark_all, random — 846 записей), потому что спека требует:
 «**Oracle только для оценщика**» (его прогоны — в диагностике, проверка максимума).
 Поля: `episode_id, policy, step, action, observation, reward, terminated, truncated`.
 Наблюдения проверены сканером: закрытого эталона в них нет.

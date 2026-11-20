@@ -1,0 +1,17 @@
+policy,issue_type,n_issues,tp,fn,recall
+mark_all,duplicate_entry,5,0,5,0.0
+mark_all,fx_rate,7,0,7,0.0
+mark_all,partial_allocation,6,0,6,0.0
+mark_all,period_cutoff,8,0,8,0.0
+oracle,duplicate_entry,5,5,0,1.0
+oracle,fx_rate,7,7,0,1.0
+oracle,partial_allocation,6,6,0,1.0
+oracle,period_cutoff,8,8,0,1.0
+random,duplicate_entry,5,0,5,0.0
+random,fx_rate,7,0,7,0.0
+random,partial_allocation,6,0,6,0.0
+random,period_cutoff,8,0,8,0.0
+reconciliation,duplicate_entry,5,5,0,1.0
+reconciliation,fx_rate,7,7,0,1.0
+reconciliation,partial_allocation,6,6,0,1.0
+reconciliation,period_cutoff,8,8,0,1.0
