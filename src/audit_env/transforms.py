@@ -40,8 +40,14 @@ def _new_id(prefixes: tuple[str, ...], index: int, rng: random.Random, width: in
 
 
 def permute_episode(files: dict[str, dict[str, str]],
-                    seed: int) -> tuple[dict[str, dict[str, str]], dict[str, Any]]:
-    """Возвращает (файлы эпизода после преобразования, карта переименования)."""
+                    seed: int, *, order: bool = True,
+                    rename: bool = True) -> tuple[dict[str, dict[str, str]], dict[str, Any]]:
+    """Возвращает (файлы эпизода после преобразования, карта переименования).
+
+    ``order`` — перестановка строк; ``rename`` — взаимно однозначная смена ID.
+    Определения 20.11 (блок 4): P01-P05 — только порядок, P06-P10 — только ID,
+    P11-P20 — и то и другое.
+    """
     rng = random.Random(seed)
     open_files = dict(files["open"])
     closed_files = dict(files.get("closed") or {})
@@ -57,24 +63,35 @@ def permute_episode(files: dict[str, dict[str, str]],
     invoice_ids = [i["invoice_id"] for i in invoices]
     payment_ids = [p["payment_id"] for p in payments]
     entity_ids = sorted({r["entity_id"] for r in ledger} | {i["entity_id"] for i in invoices})
-
-    row_map = dict(zip(row_ids, _shuffled_ids(row_ids, ROW_PREFIX, rng)))
-    invoice_map = dict(zip(invoice_ids, _shuffled_ids(invoice_ids, INVOICE_PREFIX, rng)))
-    payment_map = dict(zip(payment_ids, _shuffled_ids(payment_ids, PAY_PREFIX, rng)))
-    entity_map = dict(zip(entity_ids, _shuffled_ids(entity_ids, ENTITY_PREFIX, rng, width=3)))
-    invoice_doc_map = {d["doc_id"]: _new_id(INVOICE_DOC_PREFIX, n, rng, 4)
-                       for n, d in enumerate(invoices)}
-    payment_doc_map = {d["doc_id"]: _new_id(PAYMENT_DOC_PREFIX, n, rng, 4)
-                       for n, d in enumerate(payments)}
     old_episode = manifest["episode_id"]
-    new_episode = f"ep_{rng.randrange(16 ** 8):08x}"
-    while new_episode == old_episode:
+
+    if rename:
+        row_map = dict(zip(row_ids, _shuffled_ids(row_ids, ROW_PREFIX, rng)))
+        invoice_map = dict(zip(invoice_ids, _shuffled_ids(invoice_ids, INVOICE_PREFIX, rng)))
+        payment_map = dict(zip(payment_ids, _shuffled_ids(payment_ids, PAY_PREFIX, rng)))
+        entity_map = dict(zip(entity_ids, _shuffled_ids(entity_ids, ENTITY_PREFIX, rng, width=3)))
+        invoice_doc_map = {d["doc_id"]: _new_id(INVOICE_DOC_PREFIX, n, rng, 4)
+                           for n, d in enumerate(invoices)}
+        payment_doc_map = {d["doc_id"]: _new_id(PAYMENT_DOC_PREFIX, n, rng, 4)
+                           for n, d in enumerate(payments)}
         new_episode = f"ep_{rng.randrange(16 ** 8):08x}"
+        while new_episode == old_episode:
+            new_episode = f"ep_{rng.randrange(16 ** 8):08x}"
+    else:
+        # только порядок: идентификаторы и episode_id не меняются
+        row_map = {x: x for x in row_ids}
+        invoice_map = {x: x for x in invoice_ids}
+        payment_map = {x: x for x in payment_ids}
+        entity_map = {x: x for x in entity_ids}
+        invoice_doc_map = {d["doc_id"]: d["doc_id"] for d in invoices}
+        payment_doc_map = {d["doc_id"]: d["doc_id"] for d in payments}
+        new_episode = manifest["episode_id"]
 
     # ---- применяем порядок + переименование ------------------------------ #
-    rng.shuffle(ledger)
-    rng.shuffle(invoices)
-    rng.shuffle(payments)
+    if order:
+        rng.shuffle(ledger)
+        rng.shuffle(invoices)
+        rng.shuffle(payments)
 
     for r in ledger:
         r["row_id"] = row_map[r["row_id"]]
@@ -136,6 +153,16 @@ def permute_episode(files: dict[str, dict[str, str]],
             prov, ensure_ascii=False, indent=2, default=str) + "\n"
 
     return {"open": open_files, "closed": closed_files}, id_map
+
+
+def permute_order(files: dict[str, dict[str, str]], seed: int):
+    """Только перестановка строк (P01-P05): ID и episode_id не меняются."""
+    return permute_episode(files, seed, order=True, rename=False)
+
+
+def rename_ids(files: dict[str, dict[str, str]], seed: int):
+    """Только взаимно однозначная смена ID (P06-P10): порядок строк сохранён."""
+    return permute_episode(files, seed, order=False, rename=True)
 
 
 def _shuffled_ids(old_ids: list[str], prefixes: tuple[str, ...], rng: random.Random,

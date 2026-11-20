@@ -8,7 +8,7 @@
 > сценарии взаимодействия S1/S2, возвраты, воспроизводимость и обобщение (парные проверки),
 > matcher, награда, 4 политики, **10 train + 10 dev эпизодов, траектории 3 «агентских»
 > политик (оракул — у оценщика), диагностика P/R/F1/возврат/шаги/время,
-> точка входа оценщика `judge_adapter.py`**. **149 тестов, `check.py` 32/32,
+> точка входа оценщика `judge_adapter.py`**. **194 теста, `check.py` 32/32,
 > репетиция закрытой проверки 20×4 (`organizer_check.py`), 20 парных проверок.**
 > Готово: контейнер, записка, демо-скрипт; остаётся запись видео и защита (22.11).
 
@@ -28,11 +28,17 @@ python scripts/jury_conditions.py       # слепая проверка на у�
 python scripts/jury_marathon.py        # 10 оценок жюри ПОДРЯД (200 эпизодов, 2 ядра): 10/10
 python scripts/organizer_check.py       # репетиция закрытой проверки: 20 эпизодов x 4 политики
 python scripts/demo.py                  # демо скриптовой политики
-python -m unittest discover -s tests -v # 149 тестов
+python -m unittest discover -s tests -v # 194 теста
 python judge_adapter.py                 # самопроверка точки входа оценщика
 python scripts/golden_hash.py           # отпечаток seed=42: байт-в-байт на любой ОС
 python scripts/benchmark.py             # измеренные запасы до лимитов (время, память, шаги)
 ```
+
+**Зеркало определений проверок от 20.11.2026:** тесты `tests/test_spec_block1..4.py`
+воспроизводят все четыре блока официального чек-листа — контрактные C01–C20
+(через `judge_adapter`), матрицу эпизодов D01–D20 с шестью условиями зачёта,
+точные числа формулы блока 3 (включая 47/150 и −871/1050) и 20 парных проверок
+с раскладкой 5/5/10. Прогоняются обычным `unittest` и входят в CI.
 
 Зависимости: **только стандартная библиотека Python 3.11+** (официальная проверка без сети).
 Локально проверено на Python 3.12; CI гоняет все проверки на матрице
@@ -44,7 +50,7 @@ python scripts/benchmark.py             # измеренные запасы до
 
 ```bash
 docker build -t finrepgym .                                     # сборка (сеть нужна 1 раз — для базового образа)
-docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 149 тестов + 32/32
+docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 194 теста + 32/32
 docker run --rm finrepgym python scripts/demo_all.py --fast     # демо для жюри
 docker run --rm finrepgym python scripts/demo.py --policy oracle # одна политика
 ```
@@ -133,7 +139,7 @@ FinRepGYM/
 │                                #   demo.srt, jury_*.md, organizer_*, spec_audit.txt
 ├── docs/                        # DESIGN_NOTE, SCHEMAS, SELF_REPORT, PRESENTATION_BRIEF, ARCHITECTURE,
 │                                #   RULES, DIAGNOSTICS, SUMMARY, JURY_FAQ, VIDEO_SCRIPT
-└── tests/                       # 149 тестов
+└── tests/                       # 194 теста
 ```
 
 ## Эпизоды, траектории и диагностика

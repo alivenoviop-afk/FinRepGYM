@@ -111,7 +111,12 @@ class _AdapterEnv:
         cfg = dict(config or {})
         mode_raw = str(cfg.get("mode", "train")).lower()
         mode = "eval" if mode_raw in ("closed", "eval") else "train"
-        env = AuditEnv(mode=mode)
+        # Гарнитура оценщика (C18): детерминированный сценарий лимита времени —
+        # жюри задаёт time_limit_s в config reset, а не ищет «медленный ноутбук».
+        env_kwargs: dict[str, Any] = {}
+        if cfg.get("time_limit_s") is not None:
+            env_kwargs["time_limit_s"] = float(cfg["time_limit_s"])
+        env = AuditEnv(mode=mode, **env_kwargs)
 
         episode_dir = cfg.get("episode_dir")
         if episode_dir:
