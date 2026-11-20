@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from support import CLEAN, SEED, SMALL, AuditEnv, ContractViolation, ReconciliationPolicy, run_episode
+from support import CLEAN, SCHEMA_VERSION, SEED, SMALL, AuditEnv, ContractViolation, ReconciliationPolicy, run_episode
 
 
 class TestReset(unittest.TestCase):
@@ -17,7 +17,7 @@ class TestReset(unittest.TestCase):
         self.assertEqual(env.max_steps, 100)
         self.assertEqual(env.page_limit, 50)
         self.assertIn("episode_id", obs["manifest"])
-        self.assertEqual(obs["manifest"]["schema_version"], "audit-rl/1.0")
+        self.assertEqual(obs["manifest"]["schema_version"], SCHEMA_VERSION)
         self.assertIn("brief", obs["policy"])
         self.assertIn("period_boundary", obs["policy"])  # policy.json is open
         self.assertEqual(info["steps_used"], 0)

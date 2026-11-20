@@ -29,7 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from audit_env import AuditEnv, generate, save_episode  # noqa: E402
+from audit_env import AuditEnv, SCHEMA_VERSION, generate, save_episode  # noqa: E402
 from audit_env.policies import OraclePolicy, ReconciliationPolicy, run_episode  # noqa: E402
 
 EPISODES_DIR = ROOT / "episodes"
@@ -140,7 +140,7 @@ def verify_and_save(split: str, seed: int, config: dict) -> dict:
 def main() -> int:
     if EPISODES_DIR.exists():
         shutil.rmtree(EPISODES_DIR)
-    registry = {"schema_version": "audit-rl/1.0",
+    registry = {"schema_version": SCHEMA_VERSION,
                 "note": "открытые train/dev эпизоды; закрытые эпизоды жюри "
                         "генерирует своими seed из наших осей конфигурации",
                 "episodes": []}

@@ -1,5 +1,5 @@
 {
-  "schema_version": "audit-rl/1.0",
+  "schema_version": "finrepgym/1.0",
   "episode_id": "ep_98c3f37c78f1",
   "base_currency": "USD",
   "currencies": {

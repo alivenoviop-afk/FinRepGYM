@@ -64,7 +64,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Сборка образа (python:3.11-slim, без зависимостей)
-        run: docker build -t audit-rl-env .
+        run: docker build -t finrepgym .
 
       - name: Единая команда проверки внутри контейнера
-        run: docker run --rm audit-rl-env
+        run: docker run --rm finrepgym

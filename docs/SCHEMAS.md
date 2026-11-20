@@ -1,7 +1,7 @@
-# Схемы audit-rl-env
+# Схемы FinRepGYM
 
 > Явное описание контрактов (пункт сдачи: «Matcher и награда — общий код сопоставления
-> и награды, **схемы** и политики»). Версия схемы: `audit-rl/1.0`.
+> и награды, **схемы** и политики»). Версия схемы: `finrepgym/1.0`.
 > Реализация: `src/audit_env/`. Python >= 3.11, внешних зависимостей нет.
 
 ## 1. Среда: reset / step
@@ -35,7 +35,7 @@ step(action: object) -> (observation: object,
 { "result": { "accepted": true, "findings_count": 2 }, "steps_left": 98 }  // после submit
 ```
 
-`info` всегда содержит только: `{"mode": "train"|"eval", "steps_used": int, "schema_version": "audit-rl/1.0"}`.
+`info` всегда содержит только: `{"mode": "train"|"eval", "steps_used": int, "schema_version": "finrepgym/1.0"}`.
 
 **Флаги завершения:**
 

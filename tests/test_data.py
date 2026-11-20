@@ -14,7 +14,7 @@ import re
 import unittest
 from decimal import Decimal, ROUND_HALF_UP
 
-from support import AuditEnv, SEED, SMALL, generate
+from support import AuditEnv, SCHEMA_VERSION, SEED, SMALL, generate
 
 ISO_OFFSET = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$")
 DECIMAL = re.compile(r"^\d+\.\d+$")
@@ -59,7 +59,7 @@ class TestStructure(unittest.TestCase):
             self.assertIn(name, files["open"], name)
         self.assertEqual(manifest["n_records"], len(ledger))
         self.assertEqual(manifest["n_documents"], len(invoices) + len(payments))
-        self.assertEqual(manifest["schema_version"], "audit-rl/1.0")
+        self.assertEqual(manifest["schema_version"], SCHEMA_VERSION)
         self.assertIn(manifest["base_currency"], {"USD", "EUR", "KZT"})
 
     def test_closed_files_are_not_in_the_open_set(self):

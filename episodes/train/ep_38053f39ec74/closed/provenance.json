@@ -1,6 +1,6 @@
 {
-  "generator": "audit-rl",
-  "schema_version": "audit-rl/1.0",
+  "generator": "FinRepGYM",
+  "schema_version": "finrepgym/1.0",
   "seed": 1008,
   "config": {
     "n_invoices": 65,

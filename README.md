@@ -1,4 +1,4 @@
-# audit-rl-env — RL-среда для дообучения моделей финансового аудита
+# FinRepGYM — RL-среда для дообучения моделей финансового аудита
 
 [![tests](https://github.com/alivenoviop-afk/fintech-audit-rl/actions/workflows/tests.yml/badge.svg)](https://github.com/alivenoviop-afk/fintech-audit-rl/actions/workflows/tests.yml)
 [![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
@@ -37,10 +37,10 @@ python -m unittest discover -s tests -v # 103 теста
 Образ содержит только Python 3.11 и код проекта — **без зависимостей и без сети во время работы**.
 
 ```bash
-docker build -t audit-rl-env .                                  # сборка (сеть нужна 1 раз — для базового образа)
-docker run --rm audit-rl-env                                    # ЕДИНАЯ ПРОВЕРКА: 103 теста + 32/32
-docker run --rm audit-rl-env python scripts/demo_all.py --fast  # демо для жюри
-docker run --rm audit-rl-env python scripts/demo.py --policy oracle   # одна политика
+docker build -t finrepgym .                                     # сборка (сеть нужна 1 раз — для базового образа)
+docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 103 теста + 32/32
+docker run --rm finrepgym python scripts/demo_all.py --fast     # демо для жюри
+docker run --rm finrepgym python scripts/demo.py --policy oracle # одна политика
 ```
 
 Сборка образа и запуск проверки **внутри контейнера** выполняются в CI на каждом пуше
@@ -49,7 +49,7 @@ docker run --rm audit-rl-env python scripts/demo.py --policy oracle   # одна
 ## Устройство
 
 ```
-fintech-audit-rl/
+FinRepGYM/
 ├── src/audit_env/
 │   ├── generator.py    # скрытая история -> документы -> причинные мутации -> truth/provenance
 │   ├── env.py          # контракт reset/step, действия, лимиты, изоляция, режимы train/eval

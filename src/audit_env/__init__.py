@@ -1,4 +1,4 @@
-"""Public package surface for audit-rl-env."""
+"""Public package surface for FinRepGYM."""
 
 from .env import AuditEnv, ContractViolation, safe_calculate
 from .generator import DEFAULT_CONFIG, ISSUE_TYPES, SCHEMA_VERSION, generate, load_episode, save_episode

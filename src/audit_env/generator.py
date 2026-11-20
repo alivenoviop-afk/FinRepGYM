@@ -46,7 +46,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "audit-rl/1.0"
+SCHEMA_VERSION = "finrepgym/1.0"
 
 ISSUE_TYPES = ("duplicate_entry", "partial_allocation", "fx_rate", "period_cutoff")
 IMPLEMENTED_TYPES = ISSUE_TYPES  # все четыре типа требуемых спекой реализованы
@@ -543,7 +543,7 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         "truth.json": json.dumps({"episode_id": manifest["episode_id"], "issues": truth},
                                  ensure_ascii=False, indent=2) + "\n",
         "provenance.json": json.dumps(
-            {"generator": "audit-rl", "schema_version": SCHEMA_VERSION, "seed": int(seed),
+            {"generator": "FinRepGYM", "schema_version": SCHEMA_VERSION, "seed": int(seed),
              "config": {k: v for k, v in cfg.items()}, "episode_id": manifest["episode_id"],
              "stages": provenance_stages, "mutations": mutations,
              "invariants_before": before, "invariants_after": after},

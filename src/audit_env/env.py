@@ -128,7 +128,7 @@ def safe_calculate(expression: Any, max_len: int = 200) -> str:
 # environment
 # --------------------------------------------------------------------------- #
 class AuditEnv:
-    metadata = {"name": "audit-rl-env", "schema_version": SCHEMA_VERSION,
+    metadata = {"name": "FinRepGYM", "schema_version": SCHEMA_VERSION,
                 "reward_aggregation": "terminal only"}
 
     def __init__(

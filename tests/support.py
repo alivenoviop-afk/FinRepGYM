@@ -13,6 +13,7 @@ if str(SRC) not in sys.path:
 from audit_env import (  # noqa: E402,F401
     AuditEnv,
     ContractViolation,
+    SCHEMA_VERSION,
     compute_metrics,
     generate,
     match,

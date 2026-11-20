@@ -115,8 +115,8 @@
 
 | Критерий | Доказательство | Оценка |
 |---|---|---|
-| Запуск одной командой | `python scripts/check.py` (32/32) и `docker run --rm audit-rl-env`; CI гоняет обе | 2 |
-| Версии конфигов | `schema_version: audit-rl/1.0`, `audit_env.__version__`, Python/платформа в отчёте `check.py`, реестр seed/конфигов `episodes/registry.json`, Python 3.11 в CI и контейнере | 2 |
+| Запуск одной командой | `python scripts/check.py` (32/32) и `docker run --rm finrepgym`; CI гоняет обе | 2 |
+| Версии конфигов | `schema_version: finrepgym/1.0`, `audit_env.__version__`, Python/платформа в отчёте `check.py`, реестр seed/конфигов `episodes/registry.json`, Python 3.11 в CI и контейнере | 2 |
 | Журналы траекторий | `trajectories.jsonl` (60 прогонов, 839 записей; оракул — у оценщика), `artifacts/diagnostics.csv` (80 прогонов), `artifacts/organizer_runs.csv`, `docs/DIAGNOSTICS.md` | 2 |
 | Измеренный разбор сбоев | `docs/ARCHITECTURE.md` §12: 10 записей (как поймано → метрика → фикс); замеры: время прогона (max 0.016 с), размер решения (≈9 МБ), память (шаг «Замер памяти и размера» в CI) | 2 |
 | Честные ограничения | `docs/DESIGN_NOTE.md` §9 (7 пунктов), `docs/SUMMARY.md`; заявлений об улучшении модели нет | 2 |
