@@ -67,7 +67,7 @@ step(action: object) -> (observation: object,
 | `get_record` | `table`, `id` (непустая строка) | id должен существовать |
 | `get_document` | `doc_id` (непустая строка) | doc_id ∈ invoices/payments |
 | `calculator` | `expression` (строка) | только цифры, `.`, `+ - * /`, скобки; длина <= 200 |
-| `submit` | `episode_id`, `findings` (см. §3) | `episode_id` = manifest.episode_id |
+| `submit` | `action="submit"`, `episode_id`, `findings` (см. §3) | `episode_id` = manifest.episode_id |
 
 Результат `list_records`:
 
