@@ -94,8 +94,14 @@ def main() -> int:
                     for token in FORBIDDEN_IN_OBSERVATION:
                         if token in obs_blob:
                             leak_hits.append(f"{entry['episode_id']}/{policy_name}: {token}")
-                    fh.write(json.dumps({**rec, "policy": policy_name},
-                                        ensure_ascii=False) + "\n")
+                    # Спека 06: «Oracle ТОЛЬКО для оценщика» — его прогоны нужны для
+                    # проверки максимума награды (диагностика), а не как обучающие
+                    # траектории агента, поэтому в trajectories.jsonl они не входят.
+                    if policy_name != "oracle":
+                        fh.write(json.dumps({**rec, "policy": policy_name},
+                                            ensure_ascii=False) + "\n")
+
+    written = sum(1 for _ in TRAJECTORIES.open(encoding="utf-8"))
 
     if leak_hits:
         raise SystemExit(f"УТЕЧКА В НАБЛЮДЕНИЯХ: {leak_hits[:5]}")
@@ -155,15 +161,16 @@ def main() -> int:
         "",
         f"- Чистых эпизодов в наборе: **{len(clean_rows) // len(POLICIES)}**, "
         f"с ошибками: **{len(erroneous) // len(POLICIES)}**.",
-        f"- Всего прогонов: **{len(rows)}**; траекторий в `trajectories.jsonl`: "
-        f"**{sum(1 for _ in TRAJECTORIES.open(encoding='utf-8'))}**.",
+        f"- Всего прогонов: **{len(rows)}** (включая оракул — инструмент оценщика); "
+        f"записей в `trajectories.jsonl`: **{written}** — только три «агентских» политики, "
+        f"потому что спека 06 требует: «Oracle только для оценщика».",
         "",
         "Наблюдения в траекториях проверены сканером: закрытый эталон в них отсутствует.",
     ]
     DIAGNOSTICS_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     print(f"trajectories.jsonl : {TRAJECTORIES.stat().st_size // 1024} КБ, "
-          f"{len(rows)} прогонов")
+          f"{written} записей (3 политики; оракул — только в диагностике)")
     print(f"artifacts/diagnostics.csv : {len(rows)} строк")
     print(f"docs/DIAGNOSTICS.md : агрегат по {len(order)} политикам")
     for name in order:

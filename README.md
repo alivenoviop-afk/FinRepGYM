@@ -21,6 +21,7 @@ python scripts/demo_all.py              # ДЕМО ДЛЯ ЖЮРИ: весь п�
 python scripts/build_episodes.py        # 10 train + 10 dev эпизодов + реестр
 python scripts/build_trajectories.py    # trajectories.jsonl + docs/DIAGNOSTICS.md
 python scripts/check.py                 # единая проверка жюри: 32/32
+python scripts/spec_audit.py            # параметрический аудит ТЗ: 99/99 (по разделам)
 python scripts/organizer_check.py       # репетиция закрытой проверки: 20 эпизодов x 4 политики
 python scripts/demo.py                  # демо скриптовой политики
 python -m unittest discover -s tests -v # 103 теста
@@ -66,7 +67,8 @@ fintech-audit-rl/
 │   ├── registry.json            # реестр: split, seed, config, размеры, проверки
 │   ├── train/<episode_id>/      # 10 эпизодов: open/ + closed/
 │   └── dev/<episode_id>/        # 10 эпизодов
-├── trajectories.jsonl           # 80 прогонов (20 эпизодов × 4 политики)
+├── trajectories.jsonl           # 839 записей: 3 «агентских» политики x 20 эпизодов
+│                                #   (оракул — только для оценщика: спека 06)
 ├── artifacts/diagnostics.csv    # сырые метрики каждого прогона
 ├── docs/                        # DESIGN_NOTE, SCHEMAS, SELF_REPORT, ARCHITECTURE, RULES, DIAGNOSTICS, SUMMARY
 └── tests/                       # 103 теста
@@ -82,7 +84,10 @@ FN = 0, в открытых файлах нет закрытого эталон�
 Это **открытые** эпизоды (их правда лежит рядом); закрытые жюри собирает своими seed'ами
 из наших осей конфигурации — в репозиторий они не попадают.
 
-**Траектории (пункт сдачи `trajectories.jsonl`).** 20 эпизодов × 4 политики = 80 прогонов.
+**Траектории (пункт сдачи `trajectories.jsonl`).** Диагностика покрывает 20 эпизодов ×
+4 политики = 80 прогонов; в сами траектории входят **60 прогонов трёх «агентских»
+политик** (reconciliation, mark_all, random — 839 записей), потому что спека требует:
+«**Oracle только для оценщика**» (его прогоны — в диагностике, проверка максимума).
 Поля: `episode_id, policy, step, action, observation, reward, terminated, truncated`.
 Наблюдения проверены сканером: закрытого эталона в них нет.
 
