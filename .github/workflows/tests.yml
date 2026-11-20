@@ -12,6 +12,10 @@ jobs:
     # независимо от ОС, железа и версии Python.
     name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    env:
+      # Windows-раннеры по умолчанию в cp1252: кириллица в выводе падает
+      # UnicodeEncodeError (журнал сбоев №15). UTF-8 читается на любой ОС.
+      PYTHONIOENCODING: utf-8
     strategy:
       fail-fast: false
       matrix:

@@ -34,6 +34,7 @@ REPORT = ARTIFACTS / "jury_marathon.md"
 RAM_LIMIT_MB = 4096          # спека 07: 4 ГБ RAM
 EPISODE_LIMIT_S = 60.0       # спека 07: 60 секунд на эпизод
 TARGET_CORES = 2              # спека 07: 2 CPU-ядра
+AFFINITY_CHECK = "привязка к 2 ядрам (спека 07)"
 
 
 def pin_to_two_cores() -> str:
@@ -49,9 +50,16 @@ def pin_to_two_cores() -> str:
         return "привязка недоступна на этой ОС"
     try:
         import ctypes
+        import ctypes.wintypes as wt
+
+        kernel = ctypes.windll.kernel32
+        kernel.GetCurrentProcess.restype = ctypes.c_void_p
         mask = (1 << TARGET_CORES) - 1          # первые 2 ядра
-        ok = ctypes.windll.kernel32.SetProcessAffinityMask(
-            ctypes.windll.kernel32.GetCurrentProcess(), mask)
+        # Без явных типов HANDLE передаётся 32-битно -> API отвечает
+        # ERROR_INVALID_HANDLE (6), и привязка «молча» не выполнялась (журнал №16)
+        kernel.SetProcessAffinityMask.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+        kernel.SetProcessAffinityMask.restype = wt.BOOL
+        ok = kernel.SetProcessAffinityMask(kernel.GetCurrentProcess(), mask)
         return f"SetProcessAffinityMask: ядра 0-{TARGET_CORES - 1}" if ok \
             else "привязка отклонена ОС"
     except Exception as exc:  # noqa: BLE001
@@ -104,6 +112,22 @@ def memory_mb() -> tuple[float | None, float | None]:
         return (peak / (1024 * 1024) if sys.platform == "darwin" else peak / 1024, None)
     except Exception:  # noqa: BLE001
         return None, None
+
+
+def affinity_check(note: str) -> tuple[str, str, str]:
+    """Классификация результата привязки -> (статус, название, пояснение).
+
+    Статусы: "pass" | "fail" | "skip".
+    * macOS не даёт ни sched_setaffinity, ни SetProcessAffinityMask — это
+      ограничение ОС, а не дефект решения: статус skip (в отчёте помечается явно);
+    * API есть, но привязка не получилась, — это fail (прогон не ограничен ядрами);
+    * привязка выполнена — pass.
+    """
+    if "недоступна на этой ОС" in note:
+        return ("skip", AFFINITY_CHECK,
+                note + " (на Linux и Windows привязка выполняется)")
+    ok = "недоступна" not in note and "отклонена" not in note
+    return ("pass" if ok else "fail"), AFFINITY_CHECK, note
 
 
 def one_jury_evaluation(batch_seed: int, idx: int):
@@ -207,8 +231,16 @@ def main() -> int:
         ("каждый эпизод < 60 с (спека 07)",
          all(r["max_episode"] < EPISODE_LIMIT_S for r in rows),
          f"макс {max(r['max_episode'] for r in rows):.3f} с"),
-        ("привязка к 2 ядрам (спека 07)", "недоступна" not in affinity_note, affinity_note),
     ]
+    # Привязка к 2 ядрам: macOS не даёт ни sched_setaffinity, ни
+    # SetProcessAffinityMask — это ограничение ОС, а не дефект решения, поэтому
+    # статус SKIP. Если API привязки есть, но она не получилась, — FAIL.
+    skips: list[tuple[str, str]] = []
+    status, affinity_name, affinity_detail = affinity_check(affinity_note)
+    if status == "skip":
+        skips.append((affinity_name, affinity_detail))
+    else:
+        checks.append((affinity_name, status == "pass", affinity_detail))
     good = sum(1 for _, ok, _ in checks if ok)
 
     report = [
@@ -231,6 +263,8 @@ def main() -> int:
     report += ["", "## Проверки", ""]
     for name, ok, detail in checks:
         report.append(f"- {'[PASS]' if ok else '[FAIL]'} {name} — {detail}")
+    for name, detail in skips:
+        report.append(f"- [SKIP] {name} — {detail}")
     if all_problems:
         report += ["", "## Проблемы", ""] + [f"- {p}" for p in all_problems]
     report.append("")
@@ -240,8 +274,11 @@ def main() -> int:
     print("-" * 74)
     for name, ok, detail in checks:
         print(f"  [{'PASS' if ok else 'FAIL'}] {name} — {detail}")
-    print(f"\n  ИТОГ МАРАФОНА: {good}/{len(checks)} групп проверок; "
-          f"оценок пройдено {passed}/{args.runs}; {total_wall:.1f} с")
+    for name, detail in skips:
+        print(f"  [SKIP] {name} — {detail}")
+    print(f"\n  ИТОГ МАРАФОНА: {good}/{len(checks)} групп проверок"
+          + (f" (+{len(skips)} пропущено из-за ограничений ОС)" if skips else "")
+          + f"; оценок пройдено {passed}/{args.runs}; {total_wall:.1f} с")
     print(f"  Отчёт: {REPORT.relative_to(ROOT)}")
     return 0 if good == len(checks) else 1
 

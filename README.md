@@ -7,7 +7,7 @@
 > **Статус: 19.11.2026** — контракт, все 4 типа ошибок, мультивалютность (USD/EUR/KZT),
 > сценарии взаимодействия S1/S2, возвраты, воспроизводимость и обобщение (парные проверки),
 > matcher, награда, 4 политики, **10 train + 10 dev эпизодов, траектории 4 политик,
-> диагностика P/R/F1/возврат/шаги/время**. **124 тестов, `check.py` 32/32,
+> диагностика P/R/F1/возврат/шаги/время**. **132 теста, `check.py` 32/32,
 > репетиция закрытой проверки 20×4 (`organizer_check.py`), 20 парных проверок.**
 > Осталось: контейнер (Dockerfile), записка, демо и защита (22.11, 12:00).
 
@@ -27,7 +27,7 @@ python scripts/jury_conditions.py       # слепая проверка на у�
 python scripts/jury_marathon.py        # 10 оценок жюри ПОДРЯД (200 эпизодов, 2 ядра): 10/10
 python scripts/organizer_check.py       # репетиция закрытой проверки: 20 эпизодов x 4 политики
 python scripts/demo.py                  # демо скриптовой политики
-python -m unittest discover -s tests -v # 124 теста
+python -m unittest discover -s tests -v # 132 теста
 python scripts/golden_hash.py           # отпечаток seed=42: байт-в-байт на любой ОС
 python scripts/benchmark.py             # измеренные запасы до лимитов (время, память, шаги)
 ```
@@ -42,7 +42,7 @@ python scripts/benchmark.py             # измеренные запасы до
 
 ```bash
 docker build -t finrepgym .                                     # сборка (сеть нужна 1 раз — для базового образа)
-docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 124 тестов + 32/32
+docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 132 теста + 32/32
 docker run --rm finrepgym python scripts/demo_all.py --fast     # демо для жюри
 docker run --rm finrepgym python scripts/demo.py --policy oracle # одна политика
 ```
@@ -80,7 +80,7 @@ FinRepGYM/
 ├── artifacts/                   # diagnostics.csv, diagnostics_by_type.csv, benchmark.csv, demo.srt
 ├── docs/                        # DESIGN_NOTE, SCHEMAS, SELF_REPORT, PRESENTATION_BRIEF, ARCHITECTURE,
 │                                #   RULES, DIAGNOSTICS, SUMMARY, JURY_FAQ, VIDEO_SCRIPT
-└── tests/                       # 124 теста
+└── tests/                       # 132 теста
 ```
 
 ## Эпизоды, траектории и диагностика
