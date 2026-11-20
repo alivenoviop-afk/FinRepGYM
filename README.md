@@ -66,7 +66,7 @@ fintech-audit-rl/
 │   └── dev/<episode_id>/        # 10 эпизодов
 ├── trajectories.jsonl           # 80 прогонов (20 эпизодов × 4 политики)
 ├── artifacts/diagnostics.csv    # сырые метрики каждого прогона
-├── docs/                        # ARCHITECTURE, RULES, DIAGNOSTICS
+├── docs/                        # DESIGN_NOTE (записка), ARCHITECTURE, RULES, DIAGNOSTICS, SUMMARY
 └── tests/                       # 95 тестов
 ```
 
