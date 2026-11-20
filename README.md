@@ -72,7 +72,7 @@ fintech-audit-rl/
 ├── trajectories.jsonl           # 839 записей: 3 «агентских» политики x 20 эпизодов
 │                                #   (оракул — только для оценщика: спека 06)
 ├── artifacts/diagnostics.csv    # сырые метрики каждого прогона
-├── docs/                        # DESIGN_NOTE, SCHEMAS, SELF_REPORT, ARCHITECTURE, RULES, DIAGNOSTICS, SUMMARY
+├── docs/                        # DESIGN_NOTE, SCHEMAS, SELF_REPORT, PRESENTATION_BRIEF, ARCHITECTURE, RULES, DIAGNOSTICS, SUMMARY
 └── tests/                       # 103 теста
 ```
 
