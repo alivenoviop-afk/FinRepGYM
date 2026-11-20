@@ -1,6 +1,6 @@
 # FinRepGYM — RL-среда для дообучения моделей финансового аудита
 
-[![tests](https://github.com/alivenoviop-afk/fintech-audit-rl/actions/workflows/tests.yml/badge.svg)](https://github.com/alivenoviop-afk/fintech-audit-rl/actions/workflows/tests.yml)
+[![tests](https://github.com/alivenoviop-afk/FinRepGYM/actions/workflows/tests.yml/badge.svg)](https://github.com/alivenoviop-afk/FinRepGYM/actions/workflows/tests.yml)
 [![python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![license: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 

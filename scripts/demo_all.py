@@ -161,7 +161,7 @@ def main() -> int:
           f"({min(rows)}–{max(rows)} проводок каждый)")
     print(f"  | Траектории        : {traj_lines} записей (4 политики x 20 эпизодов)")
     print(f"  | Диагностика       : docs/DIAGNOSTICS.md + artifacts/diagnostics.csv")
-    print(f"  | Репозиторий       : github.com/alivenoviop-afk/fintech-audit-rl")
+    print(f"  | Репозиторий       : github.com/alivenoviop-afk/FinRepGYM")
     print(f"  | CI на Python 3.11 : все прогоны зелёные (без сети, без GPU)")
     step_footer("Каждый эпизод проверен ДО записи: оракул получает максимум, "
                 "сверка — ноль ложных и ноль пропущенных.")

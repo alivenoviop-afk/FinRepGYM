@@ -74,7 +74,7 @@ organizer_check.py            5/5 групп, 80 прогонов, ~2.3 с
 
 ## 6. Публикация
 
-- **Репозиторий:** https://github.com/alivenoviop-afk/fintech-audit-rl (публичный, MIT)
+- **Репозиторий:** https://github.com/alivenoviop-afk/FinRepGYM (публичный, MIT)
 - **CI:** 3 прогона, все `success` на Python 3.11 (10–13 с)
 - **Секреты:** проверены перед публикацией — не найдены
 

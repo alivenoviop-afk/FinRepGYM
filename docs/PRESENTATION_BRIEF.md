@@ -32,7 +32,7 @@
 
 ### Слайд 1. Заголовок
 - `FinRepGYM` — RL-среда для дообучения ИИ-аудитора (синтетика, офлайн, MIT)
-- Репозиторий: **github.com/alivenoviop-afk/fintech-audit-rl** (со зелёным CI)
+- Репозиторий: **github.com/alivenoviop-afk/FinRepGYM** (со зелёным CI)
 - «Симулятор, а не агент» — одна строка под заголовком.
 
 ### Слайд 2. Задача и рамки (1 минута)
@@ -118,7 +118,7 @@ python scripts/check.py                   # ИТОГ: 32/32
 python scripts/demo.py --policy mark_all  # F1=0.000, reward -1.000
 ```
 
-**Отдельно (вкладка браузера):** `github.com/alivenoviop-afk/fintech-audit-rl/actions` — зелёные прогоны CI.
+**Отдельно (вкладка браузера):** `github.com/alivenoviop-afk/FinRepGYM/actions` — зелёные прогоны CI.
 
 **Запасные варианты (если ноут/сеть подведут):**
 - всё работает **офлайн** — интернет не нужен вообще;
@@ -160,8 +160,8 @@ python scripts/demo.py --policy mark_all  # F1=0.000, reward -1.000
 
 | Что | Ссылка/файл |
 |---|---|
-| Репозиторий | github.com/alivenoviop-afk/fintech-audit-rl |
-| Зелёный CI | …/fintech-audit-rl/actions |
+| Репозиторий | github.com/alivenoviop-afk/FinRepGYM |
+| Зелёный CI | …/FinRepGYM/actions |
 | Сводка статуса | `docs/SUMMARY.md` |
 | Записка (суть устройства) | `docs/DESIGN_NOTE.md` |
 | Цифры по политикам | `docs/DIAGNOSTICS.md` |

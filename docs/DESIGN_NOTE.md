@@ -137,4 +137,4 @@ CI на каждом пуше гоняет то же самое на **Python 3.
 | Самоотчёт: карта покрытия регламента (80 тем + инженерия) | `docs/SELF_REPORT.md` |
 | Сводный статус готовности | `docs/SUMMARY.md` |
 | Эпизоды и реестр seed/конфигов | `episodes/` |
-| Репозиторий и CI | https://github.com/alivenoviop-afk/fintech-audit-rl
+| Репозиторий и CI | https://github.com/alivenoviop-afk/FinRepGYM
