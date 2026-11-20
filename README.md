@@ -21,7 +21,8 @@ python scripts/demo_all.py              # ДЕМО ДЛЯ ЖЮРИ: весь п�
 python scripts/build_episodes.py        # 10 train + 10 dev эпизодов + реестр
 python scripts/build_trajectories.py    # trajectories.jsonl + docs/DIAGNOSTICS.md
 python scripts/check.py                 # единая проверка жюри: 32/32
-python scripts/spec_audit.py            # параметрический аудит ТЗ: 99/99 (по разделам)
+python scripts/spec_audit.py            # параметрический аудит ТЗ: 100/100 (по разделам)
+python scripts/jury_conditions.py       # слепая проверка на условиях оценщиков: 9/9
 python scripts/organizer_check.py       # репетиция закрытой проверки: 20 эпизодов x 4 политики
 python scripts/demo.py                  # демо скриптовой политики
 python -m unittest discover -s tests -v # 103 теста

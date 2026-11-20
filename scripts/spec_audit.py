@@ -359,6 +359,14 @@ def main() -> int:
     deps = [l for l in req.splitlines()
             if l.strip() and not l.strip().startswith("#")]
     ck("официальная проверка без сети/платных API/GPU (ноль зависимостей)", not deps)
+    net_hits = []
+    for path in list((ROOT / "src").rglob("*.py")) + list((ROOT / "scripts").rglob("*.py")):
+        text = path.read_text(encoding="utf-8")
+        for mod in ("socket", "urllib", "requests", "ftplib", "http"):
+            if f"import {mod}" in text or f"from {mod}" in text:
+                net_hits.append(f"{path.name}: {mod}")
+    ck("в коде нет сетевых импортов (только stdlib)", not net_hits,
+       ", ".join(net_hits) or "чисто")
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     ck("инструкции контейнера", (ROOT / "Dockerfile").exists() and "docker run" in readme)
     ck("единая команда проверки", "python scripts/check.py" in readme

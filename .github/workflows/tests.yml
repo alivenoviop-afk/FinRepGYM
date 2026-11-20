@@ -31,6 +31,14 @@ jobs:
       - name: Параметрический аудит ТЗ (spec_audit)
         run: python scripts/spec_audit.py
 
+      # Слепая проверка на условиях оценщиков: свежие seed и новые сочетания
+      - name: Слепая проверка условий оценщиков (jury_conditions)
+        run: python scripts/jury_conditions.py
+
+      # Офлайн-доказательство: без site-packages (сторонних пакетов нет вообще)
+      - name: Офлайн-режим (python -S, без site-packages)
+        run: python -S -m unittest discover -s tests
+
       # Замер ресурсов (спека 07: 2 CPU, 4 ГБ RAM, 1 ГБ на решение)
       - name: Замер памяти и размера (лимиты регламента)
         run: |

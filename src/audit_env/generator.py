@@ -283,6 +283,16 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
     if base not in currencies:
         currencies = [base] + currencies
 
+    # Явная проверка противоречий конфигурации: тип fx_rate и сценарии S1/S2
+    # требуют минимум двух валют (иначе конвертация невозможна в принципе).
+    wants_conversion = (not cfg["clean"]) and (
+        "fx_rate" in [t for t in cfg.get("issue_types", []) if t in ISSUE_TYPES]
+        or any(s in ("S1", "S2") for s in (cfg.get("scenarios") or [])))
+    if wants_conversion and len(currencies) < 2:
+        raise EpisodeError(
+            "противоречие конфигурации: для типа 'fx_rate' и сценариев S1/S2 "
+            "нужно минимум 2 валюты в config['currencies']")
+
     fx = FxTable(rng, currencies, period_start.date(), period_end.date())
     policy_day = period_end.date()
 
@@ -371,10 +381,14 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
 
         # платёж в ДРУГОЙ валюте — обязательный сценарий спеки; постинг в базовую.
         # Первый оплаченный счёт гарантированно получает кросс-валютный платёж.
-        cross = bool(cfg["distractors"]) and (cross_made == 0 or rng.random() < CROSS_CCY_RATE)
+        # Кросс-валютный платёж — НЕ отвлекающий случай, а подложка для типа
+        # fx_rate и сценариев S1/S2: генерируем всегда, пока есть вторая валюта.
+        # Иначе при distractors=false кандидатов не остаётся и ядро падало бы
+        # на валидном сочетании параметров.
+        others = [c for c in currencies if c != inv["currency"]]
+        cross = bool(others) and (cross_made == 0 or rng.random() < CROSS_CCY_RATE)
         if cross:
             cross_made += 1
-            others = [c for c in currencies if c != inv["currency"]]
             # предпочитаем НЕ-базовую валюту: тогда постинг реально конвертируется,
             # и для типа fx_rate / сценариев всегда есть кандидат (иначе курс не применяется)
             foreign = [c for c in others if c != base]
@@ -452,7 +466,10 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         mutations.append(mutation)
 
     # ---- сценарии взаимодействия (спека: два обязательных) ---------------- #
-    for scen in (s for s in (cfg.get("scenarios") or []) if s in ("S1", "S2")):
+    # clean=true главенствует: чистый эпизод остаётся пустым даже при заданных
+    # сценариях (иначе флаг чистоты противоречил бы сам себе).
+    for scen in ([] if cfg["clean"] else
+                 (s for s in (cfg.get("scenarios") or []) if s in ("S1", "S2"))):
         if scen == "S1":
             issues, muts, pay_id = _inject_scenario_s1(rng, ledger, payments,
                                                         period_start, period_end,

@@ -353,5 +353,40 @@ class TestScope(unittest.TestCase):
             env.reset(seed=SEED, config={"episode_dir": "/nonexistent"})
 
 
+class TestConfigCombos(unittest.TestCase):
+    """Новые сочетания параметров, которые может собрать жюри (спека 06)."""
+
+    def test_clean_dominates_over_scenarios(self):
+        files = generate(SEED, {"n_invoices": 30, "clean": True, "n_issues": 0,
+                                "scenarios": ["S1", "S2"]})
+        self.assertEqual(json.loads(files["closed"]["truth.json"])["issues"], [],
+                         "clean=true должен главенствовать: чистый эпизод пуст")
+
+    def test_fx_type_works_when_distractors_disabled(self):
+        """Без этого ядро падало бы на валидном сочетании: fx требовал кросс-платежа,
+        а кросс-платежи были заперты внутри distractors."""
+        cfg = {"n_invoices": 25, "issue_types": ["fx_rate"], "n_issues": 1,
+               "distractors": False}
+        truth = json.loads(generate(SEED, cfg)["closed"]["truth.json"])["issues"]
+        self.assertEqual([t["type"] for t in truth], ["fx_rate"])
+
+    def test_scenarios_work_when_distractors_disabled(self):
+        cfg = {"n_invoices": 30, "issue_types": [], "n_issues": 0,
+               "scenarios": ["S1", "S2"], "distractors": False}
+        truth = json.loads(generate(SEED, cfg)["closed"]["truth.json"])["issues"]
+        self.assertEqual(len(truth), 4)
+
+    def test_single_currency_contradiction_is_reported_clearly(self):
+        from audit_env.generator import EpisodeError
+        with self.assertRaises(EpisodeError) as ctx:
+            generate(SEED, {"n_invoices": 25, "issue_types": ["fx_rate"], "n_issues": 1,
+                            "currencies": ["USD"]})
+        self.assertIn("2 валюты", str(ctx.exception))
+        # а чистый эпизод с одной валютой обязан работать
+        files = generate(SEED, {"n_invoices": 60, "clean": True, "n_issues": 0,
+                                "currencies": ["USD"]})
+        self.assertEqual(json.loads(files["closed"]["truth.json"])["issues"], [])
+
+
 if __name__ == "__main__":
     unittest.main()
