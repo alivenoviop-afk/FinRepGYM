@@ -35,17 +35,26 @@ step(action: object) -> (observation: object,
 { "result": { "accepted": true, "findings_count": 2 }, "steps_left": 98 }  // после submit
 ```
 
-`info` всегда содержит только: `{"mode": "train"|"eval", "steps_used": int, "schema_version": "finrepgym/1.0"}`.
+Через `judge_adapter.py` то же наблюдение приходит в каноническом виде
+определений: `{"result", "error", "remaining_steps"}` (незаполненное поле —
+`null`), а `submit` отдаёт ровно `{"accepted": true}` (без `findings_count`).
+
+`info` в `reset`: `{"mode": "train"|"eval", "steps_used": 0, "schema_version": "finrepgym/1.0"}`;
+`info` в `step`: `{"mode": "train"|"eval", "steps_used": int}` — закрытых данных нет никогда.
 
 **Флаги завершения:**
 
 | Ситуация | terminated | truncated | reward (train) |
 |---|---|---|---|
-| `submit` принят | `true` | `false` | `clip(2·F1 − 1 − 0.002·шаги, −1, 1)` |
+| `submit` принят | `true` | `false` | `clip(2·F1 − 1 − 0.002·inspection_steps, −1, 1)` |
 | `submit` отклонён (плохая структура) | `true` | `false` | `-1.0` |
 | израсходовано 100 шагов | `false` | `true` | награда за **пустой** ответ |
 | вышло время (60 с) — действие не выполняется | `false` | `true` | награда за **пустой** ответ |
 | все промежуточные шаги | `false` | `false` | `0.0` |
+| шаг после завершения → ошибка `episode_finished` | `true` | `false` | `0.0` (состояние не меняется) |
+
+`inspection_steps` — число действий **до** `submit` (включая ошибочные): сам submit
+входит в лимит 100 действий, но в штраф за шаги не входит.
 
 В режиме `eval` политика получает `reward = 0.0` на всех шагах; истинная награда и
 метрики доступны только через `evaluator_report()` (вне контракта).
@@ -97,8 +106,13 @@ step(action: object) -> (observation: object,
 Обязательные поля находки: `type`, `affected_ids`, `claimed_amount_minor` (целое),
 `currency`, `evidence_ids`, `explanation`.
 
+Лимиты проверяются **до** нормализации множеств; длина `explanation` считается в
+Unicode code points; `claimed_amount_minor` — JSON-целое, `bool` не принимается за
+денежную сумму; `affected_ids`/`evidence_ids` обязаны быть списками строк.
+
 **Префиксы `evidence_ids`:** `ledger:<row_id>`, `invoice:<invoice_id>`,
 `payment:<payment_id>`, `fx:<date>:<source>:<target>`, `policy:<rule>`.
+Ссылка на несуществующий ID → находка не сопоставляется (FP), а не авария.
 
 ## 4. Источник истины (закрытая зона, агенту недоступна)
 
@@ -141,16 +155,22 @@ F1 = 2·TP / (2·TP + FP + FN)
 награда = clip(2·F1 − 1 − 0.002 · inspection_steps, −1, 1)   // только терминальная
 ```
 
-**Условие TP (все одновременно):** тип равен; канонические `affected_ids` равны
-(множество строк); валюта равна (верхний регистр); `|claimed − expected| <= amount_tolerance_minor`;
-`evidence_ids` содержит **полностью** хотя бы один допустимый набор из `evidence_sets`.
-Назначение взаимно однозначное, жадное в порядке подачи; повтор по занятому эталону → FP.
+**Условие TP (все одновременно):** тип равен **точно** (без trim/синонимов);
+множества `affected_ids` равны **точно** (лишний существующий ID убивает совпадение);
+валюта равна **точно** (регистр и пробелы не склеиваются);
+`|claimed − expected| <= amount_tolerance_minor` (τ по умолчанию 0);
+`evidence_ids` содержит **полностью** хотя бы один допустимый набор из `evidence_sets`
+и **только существующие** в открытых файлах ID (несуществующий → FP, не авария).
+Назначение — **максимальное паросочетание** с детерминированным выбором
+(эталоны по возрастанию `issue_id`, каждой находке — наименьший возможный индекс);
+повтор по занятому эталону → FP.
 
 ## 7. Коды ошибок
 
 | Код | Когда |
 |---|---|
-| `unknown_action` | действие не из списка / не объект |
+| `invalid_action` | действие не является объектом |
+| `unknown_action` | имя действия вне списка |
 | `unknown_table` | таблица вне списка |
 | `unknown_id` / `unknown_document` | записи/документа нет |
 | `invalid_cursor` / `invalid_limit` / `invalid_id` | нарушение ограничений полей |
@@ -159,6 +179,7 @@ F1 = 2·TP / (2·TP + FP + FN)
 | `division_by_zero` | деление на ноль |
 | `time_limit` | истекли 60 с — действие не выполнено, `truncated=true` |
 | `submit_invalid` | нарушена схема findings.json → `terminated=true`, reward = −1 |
+| `episode_finished` | шаг после завершения: состояние и награда не меняются |
 
 Сообщения ограничены и не содержат ни эталона, ни списка корректных ответов.
 
@@ -175,6 +196,23 @@ F1 = 2·TP / (2·TP + FP + FN)
   "issue_types": ["duplicate_entry"],  // подмножество из 4 типов
   "n_issues": 1,                       // 0..12
   "scenarios": ["S1"],                 // [] | ["S1"] | ["S2"] | ["S1","S2"]
+  "partial_variant": "partial",        // "partial" — недостаёт часть;
+                                       // "miss" — распределение пропущено полностью
+                                       //   (определения D09-D11: «пропуск» и «частичный»)
   "clean": false,                      // true → эталон пуст
-  "distractors": true }                // возвраты, разбитые платежи, кросс-платежи
+  "distractors": true }                // возвраты, разбитые платежи, кросс-платежи,
+                                       // повторяющиеся суммы, границы периода
 ```
+
+**Раскладка для определений D01-D20** (жюри подбирает конфиги по этим осям):
+
+| Эпизоды | Конфигурация |
+|---|---|
+| D01 (обычная сверка) | `{"clean": true, "distractors": false}` |
+| D02-D05 (разбитый платёж / возврат / повторяющиеся суммы / граница) | `{"clean": true, "distractors": true}` + разные seed: все четыре признака присутствуют в данных |
+| D06-D08 (дубль счёта) | `{"issue_types": ["duplicate_entry"], "n_issues": 1}` |
+| D09-D11 (пропуск/частичное распределение) | `{"issue_types": ["partial_allocation"], "n_issues": 1, "partial_variant": "miss"}` и `"partial_variant": "partial"` |
+| D12-D13 (дата/курс) | `{"issue_types": ["fx_rate"], "n_issues": 1}` |
+| D14-D15 (период) | `{"issue_types": ["period_cutoff"], "n_issues": 1}` |
+| D16-D18 (сценарий 1) | `{"scenarios": ["S1"]}` (+ нужные типы) |
+| D19-D20 (сценарий 2) | `{"scenarios": ["S2"]}` (+ нужные типы) |

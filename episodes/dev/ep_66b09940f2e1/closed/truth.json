@@ -1,0 +1,53 @@
+{
+  "episode_id": "ep_66b09940f2e1",
+  "issues": [
+    {
+      "issue_id": "iss_duplicate_0001",
+      "type": "duplicate_entry",
+      "affected_ids": [
+        "ln_00785",
+        "ln_05785"
+      ],
+      "expected_amount_minor": 852000,
+      "currency": "EUR",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "ledger:ln_05785",
+          "ledger:ln_00785",
+          "invoice:FACT-2026-0044"
+        ],
+        [
+          "ledger:ln_05785",
+          "ledger:ln_00785"
+        ]
+      ],
+      "statement": "строка выручки продублирована: две идентичные записи на одну счёт-фактуру, равенство дебет=кредит нарушено на сумму строки"
+    },
+    {
+      "issue_id": "iss_partial_0002",
+      "type": "partial_allocation",
+      "affected_ids": [
+        "PAY-2026-0757",
+        "ln_00960",
+        "ln_00961"
+      ],
+      "expected_amount_minor": 872960,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0757",
+          "ledger:ln_00961",
+          "invoice:FACT-2026-0059"
+        ],
+        [
+          "payment:PAY-2026-0757",
+          "ledger:ln_00960",
+          "ledger:ln_00961"
+        ]
+      ],
+      "statement": "платёж PAY-2026-0757 распределён в журнале на 3095040 при документе на 3968000: недостаёт 872960"
+    }
+  ]
+}

@@ -3,7 +3,7 @@
   "note": "открытые train/dev эпизоды; закрытые эпизоды жюри генерирует своими seed из наших осей конфигурации",
   "episodes": [
     {
-      "episode_id": "ep_9ce2010caa6a",
+      "episode_id": "ep_9af78603a633",
       "split": "train",
       "seed": 1001,
       "config": {
@@ -12,7 +12,7 @@
         "n_issues": 0,
         "scenarios": []
       },
-      "path": "episodes/train/ep_9ce2010caa6a",
+      "path": "episodes/train/ep_9af78603a633",
       "n_records": 228,
       "n_documents": 110,
       "n_issues": 0,
@@ -22,7 +22,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_3a155dec1b5f",
+      "episode_id": "ep_4b6cec263492",
       "split": "train",
       "seed": 1002,
       "config": {
@@ -32,7 +32,7 @@
         "scenarios": [],
         "utc_offset": "+03:00"
       },
-      "path": "episodes/train/ep_3a155dec1b5f",
+      "path": "episodes/train/ep_4b6cec263492",
       "n_records": 308,
       "n_documents": 140,
       "n_issues": 0,
@@ -42,7 +42,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_2ccaa7897f27",
+      "episode_id": "ep_79aa05cf9e21",
       "split": "train",
       "seed": 1003,
       "config": {
@@ -52,7 +52,7 @@
         ],
         "n_issues": 1
       },
-      "path": "episodes/train/ep_2ccaa7897f27",
+      "path": "episodes/train/ep_79aa05cf9e21",
       "n_records": 253,
       "n_documents": 118,
       "n_issues": 1,
@@ -64,7 +64,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_dd90ea09ad61",
+      "episode_id": "ep_7ac575df4d5d",
       "split": "train",
       "seed": 1004,
       "config": {
@@ -74,7 +74,7 @@
         ],
         "n_issues": 1
       },
-      "path": "episodes/train/ep_dd90ea09ad61",
+      "path": "episodes/train/ep_7ac575df4d5d",
       "n_records": 266,
       "n_documents": 125,
       "n_issues": 1,
@@ -86,7 +86,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_86cab9ee963c",
+      "episode_id": "ep_5bc4845be5e0",
       "split": "train",
       "seed": 1005,
       "config": {
@@ -96,7 +96,7 @@
         ],
         "n_issues": 1
       },
-      "path": "episodes/train/ep_86cab9ee963c",
+      "path": "episodes/train/ep_5bc4845be5e0",
       "n_records": 280,
       "n_documents": 131,
       "n_issues": 1,
@@ -108,7 +108,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_d1728b2241a0",
+      "episode_id": "ep_29413005f028",
       "split": "train",
       "seed": 1006,
       "config": {
@@ -118,7 +118,7 @@
         ],
         "n_issues": 1
       },
-      "path": "episodes/train/ep_d1728b2241a0",
+      "path": "episodes/train/ep_29413005f028",
       "n_records": 310,
       "n_documents": 144,
       "n_issues": 1,
@@ -130,7 +130,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_5cebe8d30b4f",
+      "episode_id": "ep_bc63d266311d",
       "split": "train",
       "seed": 1007,
       "config": {
@@ -141,7 +141,7 @@
         ],
         "n_issues": 2
       },
-      "path": "episodes/train/ep_5cebe8d30b4f",
+      "path": "episodes/train/ep_bc63d266311d",
       "n_records": 263,
       "n_documents": 123,
       "n_issues": 2,
@@ -154,7 +154,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_38053f39ec74",
+      "episode_id": "ep_e12920ff9deb",
       "split": "train",
       "seed": 1008,
       "config": {
@@ -165,7 +165,7 @@
         ],
         "n_issues": 2
       },
-      "path": "episodes/train/ep_38053f39ec74",
+      "path": "episodes/train/ep_e12920ff9deb",
       "n_records": 306,
       "n_documents": 141,
       "n_issues": 2,
@@ -178,7 +178,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_7a3826c15912",
+      "episode_id": "ep_84278b184ff1",
       "split": "train",
       "seed": 1009,
       "config": {
@@ -189,7 +189,7 @@
           "S1"
         ]
       },
-      "path": "episodes/train/ep_7a3826c15912",
+      "path": "episodes/train/ep_84278b184ff1",
       "n_records": 298,
       "n_documents": 144,
       "n_issues": 2,
@@ -202,7 +202,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_98c3f37c78f1",
+      "episode_id": "ep_bbe1affda30b",
       "split": "train",
       "seed": 1010,
       "config": {
@@ -213,7 +213,7 @@
           "S2"
         ]
       },
-      "path": "episodes/train/ep_98c3f37c78f1",
+      "path": "episodes/train/ep_bbe1affda30b",
       "n_records": 318,
       "n_documents": 149,
       "n_issues": 2,
@@ -226,7 +226,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_70db46c72b22",
+      "episode_id": "ep_856901a97d32",
       "split": "dev",
       "seed": 2001,
       "config": {
@@ -236,7 +236,7 @@
         "scenarios": [],
         "utc_offset": "-07:00"
       },
-      "path": "episodes/dev/ep_70db46c72b22",
+      "path": "episodes/dev/ep_856901a97d32",
       "n_records": 348,
       "n_documents": 160,
       "n_issues": 0,
@@ -246,7 +246,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_15078028b0c3",
+      "episode_id": "ep_3bf6f96c04fc",
       "split": "dev",
       "seed": 2002,
       "config": {
@@ -256,7 +256,7 @@
         ],
         "n_issues": 1
       },
-      "path": "episodes/dev/ep_15078028b0c3",
+      "path": "episodes/dev/ep_3bf6f96c04fc",
       "n_records": 243,
       "n_documents": 113,
       "n_issues": 1,
@@ -268,7 +268,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_1bae8ad0ca09",
+      "episode_id": "ep_6291173b339b",
       "split": "dev",
       "seed": 2003,
       "config": {
@@ -278,7 +278,7 @@
         ],
         "n_issues": 1
       },
-      "path": "episodes/dev/ep_1bae8ad0ca09",
+      "path": "episodes/dev/ep_6291173b339b",
       "n_records": 240,
       "n_documents": 110,
       "n_issues": 1,
@@ -290,7 +290,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_81d83ab324d7",
+      "episode_id": "ep_153b048b791e",
       "split": "dev",
       "seed": 2004,
       "config": {
@@ -300,7 +300,7 @@
         ],
         "n_issues": 1
       },
-      "path": "episodes/dev/ep_81d83ab324d7",
+      "path": "episodes/dev/ep_153b048b791e",
       "n_records": 288,
       "n_documents": 132,
       "n_issues": 1,
@@ -312,7 +312,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_d22a026cf718",
+      "episode_id": "ep_ad9b930885d7",
       "split": "dev",
       "seed": 2005,
       "config": {
@@ -322,7 +322,7 @@
         ],
         "n_issues": 1
       },
-      "path": "episodes/dev/ep_d22a026cf718",
+      "path": "episodes/dev/ep_ad9b930885d7",
       "n_records": 308,
       "n_documents": 150,
       "n_issues": 1,
@@ -334,7 +334,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_c06685be2720",
+      "episode_id": "ep_66b09940f2e1",
       "split": "dev",
       "seed": 2006,
       "config": {
@@ -345,7 +345,7 @@
         ],
         "n_issues": 2
       },
-      "path": "episodes/dev/ep_c06685be2720",
+      "path": "episodes/dev/ep_66b09940f2e1",
       "n_records": 269,
       "n_documents": 122,
       "n_issues": 2,
@@ -358,7 +358,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_d3376e30b5b4",
+      "episode_id": "ep_8534216cff7f",
       "split": "dev",
       "seed": 2007,
       "config": {
@@ -369,7 +369,7 @@
         ],
         "n_issues": 2
       },
-      "path": "episodes/dev/ep_d3376e30b5b4",
+      "path": "episodes/dev/ep_8534216cff7f",
       "n_records": 262,
       "n_documents": 123,
       "n_issues": 2,
@@ -382,7 +382,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_559ae03f91be",
+      "episode_id": "ep_7fa384085911",
       "split": "dev",
       "seed": 2008,
       "config": {
@@ -393,7 +393,7 @@
         ],
         "n_issues": 2
       },
-      "path": "episodes/dev/ep_559ae03f91be",
+      "path": "episodes/dev/ep_7fa384085911",
       "n_records": 325,
       "n_documents": 144,
       "n_issues": 2,
@@ -406,7 +406,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_71e116ad6d62",
+      "episode_id": "ep_c5b00e6fcf6a",
       "split": "dev",
       "seed": 2009,
       "config": {
@@ -417,7 +417,7 @@
           "S1"
         ]
       },
-      "path": "episodes/dev/ep_71e116ad6d62",
+      "path": "episodes/dev/ep_c5b00e6fcf6a",
       "n_records": 260,
       "n_documents": 125,
       "n_issues": 2,
@@ -430,7 +430,7 @@
       "recon_fn": 0
     },
     {
-      "episode_id": "ep_7cc4ce7ec319",
+      "episode_id": "ep_8328929956f6",
       "split": "dev",
       "seed": 2010,
       "config": {
@@ -441,7 +441,7 @@
           "S2"
         ]
       },
-      "path": "episodes/dev/ep_7cc4ce7ec319",
+      "path": "episodes/dev/ep_8328929956f6",
       "n_records": 272,
       "n_documents": 129,
       "n_issues": 2,

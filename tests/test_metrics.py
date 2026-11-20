@@ -11,8 +11,8 @@ TRUTH = [{
     "type": "duplicate_entry",
     "affected_ids": ["row_00002", "row_00009"],
     "expected_amount_minor": 1000,
-    "currency": "usd",
-    "amount_tolerance_minor": 5,
+    "currency": "USD",
+    "amount_tolerance_minor": 0,
     "evidence_sets": [["ledger:row_00009", "ledger:row_00002", "invoice:INV-1"]],
 }]
 
@@ -36,14 +36,26 @@ class TestMatching(unittest.TestCase):
         self.assertEqual((m["tp"], m["fp"], m["fn"]), (1, 0, 0))
         self.assertEqual((m["precision"], m["recall"], m["f1"]), (1.0, 1.0, 1.0))
 
-    def test_id_order_and_currency_case_do_not_matter(self):
-        m = compute_metrics(TRUTH, [finding(affected_ids=["row_00002", "row_00009"],
-                                            currency="USD".lower())])
+    def test_id_order_does_not_matter_but_currency_case_does(self):
+        # порядок affected_ids не важен (множество)
+        m = compute_metrics(TRUTH, [finding(affected_ids=["row_00002", "row_00009"])])
         self.assertEqual(m["tp"], 1)
+        # регистр и пробелы валюты НЕ склеиваются (определения 20.11: точное совпадение)
+        self.assertEqual(compute_metrics(TRUTH, [finding(currency="usd")])["tp"], 0)
+        self.assertEqual(compute_metrics(TRUTH, [finding(currency="USD ")])["tp"], 0)
 
     def test_wrong_amount_is_not_a_tp(self):
+        # tau по умолчанию 0: любое отклонение — не совпадение
         self.assertEqual(compute_metrics(TRUTH, [finding(claimed_amount_minor=1006)])["tp"], 0)
-        self.assertEqual(compute_metrics(TRUTH, [finding(claimed_amount_minor=1005)])["tp"], 1)
+        self.assertEqual(compute_metrics(TRUTH, [finding(claimed_amount_minor=1005)])["tp"], 0)
+
+    def test_declared_tolerance_is_honoured(self):
+        """Явно заявленный в truth допуск (tau) применяется как документированный."""
+        tolerant = [dict(TRUTH[0], amount_tolerance_minor=5)]
+        self.assertEqual(compute_metrics(tolerant,
+                                         [finding(claimed_amount_minor=1005)])["tp"], 1)
+        self.assertEqual(compute_metrics(tolerant,
+                                         [finding(claimed_amount_minor=1006)])["tp"], 0)
 
     def test_wrong_type_is_not_a_tp(self):
         self.assertEqual(compute_metrics(TRUTH, [finding(type="period_cutoff")])["tp"], 0)

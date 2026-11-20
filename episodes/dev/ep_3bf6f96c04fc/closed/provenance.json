@@ -1,0 +1,105 @@
+{
+  "generator": "FinRepGYM",
+  "schema_version": "finrepgym/1.0",
+  "seed": 2002,
+  "config": {
+    "n_invoices": 55,
+    "base_currency": "USD",
+    "currencies": [
+      "USD",
+      "EUR",
+      "KZT"
+    ],
+    "minor_unit_digits": 2,
+    "timezone": "Asia/Almaty",
+    "utc_offset": "+05:00",
+    "period_start": "2026-01-01",
+    "period_end": "2026-03-31",
+    "issue_types": [
+      "duplicate_entry"
+    ],
+    "n_issues": 1,
+    "scenarios": [],
+    "partial_variant": "partial",
+    "clean": false,
+    "distractors": true
+  },
+  "episode_id": "ep_3bf6f96c04fc",
+  "stages": [
+    {
+      "stage": "history",
+      "detail": "balanced books verified in base currency",
+      "invariants": {
+        "sum_debits": 201144807,
+        "sum_credits": 201144807,
+        "books_balanced": true,
+        "ar_balance_in_period": 37326541,
+        "invoiced_in_period": 116541525,
+        "paid_in_period": 79214984,
+        "ar_matches_documents": true,
+        "base_currency": "USD"
+      }
+    },
+    {
+      "stage": "verify",
+      "invariants_after": {
+        "sum_debits": 201144807,
+        "sum_credits": 202399207,
+        "books_balanced": false,
+        "ar_balance_in_period": 37326541,
+        "invoiced_in_period": 116541525,
+        "paid_in_period": 79214984,
+        "ar_matches_documents": true,
+        "base_currency": "USD"
+      },
+      "declared_discrepancies": {
+        "books_imbalance": -1254400,
+        "declared_imbalance": -1254400,
+        "ar_period_discrepancy": 0,
+        "declared_ar_discrepancy": 0,
+        "verified": true
+      }
+    }
+  ],
+  "mutations": [
+    {
+      "issue_id": "iss_duplicate_0001",
+      "type": "duplicate_entry",
+      "causal_change": "copied ledger row ln_00394 -> ln_05394 (credit side)",
+      "before": {
+        "sum_debits_minus_credits": 0
+      },
+      "after": {
+        "sum_debits_minus_credits": -1254400
+      },
+      "expected_amount_minor": 1254400,
+      "currency": "USD",
+      "effect_imbalance": -1254400,
+      "effect_ar_diff": 0,
+      "affected_ids": [
+        "ln_00394",
+        "ln_05394"
+      ]
+    }
+  ],
+  "invariants_before": {
+    "sum_debits": 201144807,
+    "sum_credits": 201144807,
+    "books_balanced": true,
+    "ar_balance_in_period": 37326541,
+    "invoiced_in_period": 116541525,
+    "paid_in_period": 79214984,
+    "ar_matches_documents": true,
+    "base_currency": "USD"
+  },
+  "invariants_after": {
+    "sum_debits": 201144807,
+    "sum_credits": 202399207,
+    "books_balanced": false,
+    "ar_balance_in_period": 37326541,
+    "invoiced_in_period": 116541525,
+    "paid_in_period": 79214984,
+    "ar_matches_documents": true,
+    "base_currency": "USD"
+  }
+}

@@ -138,11 +138,17 @@ class TestBadEvidenceAndGuesses(unittest.TestCase):
     def test_resubmission_is_rejected(self):
         env = AuditEnv()
         env.reset(seed=SEED, config=SMALL)
-        from support import ContractViolation
         env.step({"action": "submit", "episode_id": env._manifest["episode_id"], "findings": []})
-        with self.assertRaises(ContractViolation):
-            env.step({"action": "submit", "episode_id": env._manifest["episode_id"],
-                      "findings": []})
+        before = env.evaluator_report()
+        obs, reward, terminated, truncated, _ = env.step(
+            {"action": "submit", "episode_id": env._manifest["episode_id"], "findings": []})
+        # повторная отправка невозможна: ограниченная ошибка, состояние не тронуто
+        self.assertEqual(obs["error"]["code"], "episode_finished")
+        self.assertTrue(terminated and not truncated)
+        self.assertEqual(reward, 0.0)
+        after = env.evaluator_report()
+        self.assertEqual(before["metrics"], after["metrics"])
+        self.assertEqual(before["true_reward"], after["true_reward"])
 
 
 class TestReproducibility(unittest.TestCase):

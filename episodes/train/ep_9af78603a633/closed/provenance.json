@@ -1,0 +1,86 @@
+{
+  "generator": "FinRepGYM",
+  "schema_version": "finrepgym/1.0",
+  "seed": 1001,
+  "config": {
+    "n_invoices": 60,
+    "base_currency": "USD",
+    "currencies": [
+      "USD",
+      "EUR",
+      "KZT"
+    ],
+    "minor_unit_digits": 2,
+    "timezone": "Asia/Almaty",
+    "utc_offset": "+05:00",
+    "period_start": "2026-01-01",
+    "period_end": "2026-03-31",
+    "issue_types": [
+      "duplicate_entry",
+      "period_cutoff"
+    ],
+    "n_issues": 0,
+    "scenarios": [],
+    "partial_variant": "partial",
+    "clean": true,
+    "distractors": true
+  },
+  "episode_id": "ep_9af78603a633",
+  "stages": [
+    {
+      "stage": "history",
+      "detail": "balanced books verified in base currency",
+      "invariants": {
+        "sum_debits": 191332776,
+        "sum_credits": 191332776,
+        "books_balanced": true,
+        "ar_balance_in_period": 39643284,
+        "invoiced_in_period": 114490854,
+        "paid_in_period": 74847570,
+        "ar_matches_documents": true,
+        "base_currency": "USD"
+      }
+    },
+    {
+      "stage": "verify",
+      "invariants_after": {
+        "sum_debits": 191332776,
+        "sum_credits": 191332776,
+        "books_balanced": true,
+        "ar_balance_in_period": 39643284,
+        "invoiced_in_period": 114490854,
+        "paid_in_period": 74847570,
+        "ar_matches_documents": true,
+        "base_currency": "USD"
+      },
+      "declared_discrepancies": {
+        "books_imbalance": 0,
+        "declared_imbalance": 0,
+        "ar_period_discrepancy": 0,
+        "declared_ar_discrepancy": 0,
+        "verified": true
+      }
+    }
+  ],
+  "mutations": [],
+  "invariants_before": {
+    "sum_debits": 191332776,
+    "sum_credits": 191332776,
+    "books_balanced": true,
+    "ar_balance_in_period": 39643284,
+    "invoiced_in_period": 114490854,
+    "paid_in_period": 74847570,
+    "ar_matches_documents": true,
+    "base_currency": "USD"
+  },
+  "invariants_after": {
+    "sum_debits": 191332776,
+    "sum_credits": 191332776,
+    "books_balanced": true,
+    "ar_balance_in_period": 39643284,
+    "invoiced_in_period": 114490854,
+    "paid_in_period": 74847570,
+    "ar_matches_documents": true,
+    "base_currency": "USD"
+  }
+}

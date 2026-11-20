@@ -84,6 +84,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "issue_types": ["duplicate_entry", "period_cutoff"],
     "n_issues": 2,
     "scenarios": [],          # ["S1"] / ["S2"] / ["S1","S2"]: сценарии взаимодействия
+    # partial_allocation: "partial" — недостаёт часть суммы;
+    # "miss" — распределение пропущено полностью (D09-D11: «пропуск» vs «частичный»)
+    "partial_variant": "partial",
     "clean": False,
     "distractors": True,
 }
@@ -276,6 +279,12 @@ def episode_fingerprint(seed: int, config: dict | None = None) -> str:
 def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[str, str]]:
     """Build one episode. Deterministic: same seed + config -> byte-identical files."""
     cfg = {**DEFAULT_CONFIG, **(config or {})}
+    # JSON-массивы обязательны: итерация по set/dict зависит от PYTHONHASHSEED
+    # и сломала бы «одинаковые seed+config -> байт-в-байт те же файлы».
+    if not isinstance(cfg.get("issue_types"), list) or not isinstance(cfg.get("currencies"), list):
+        raise EpisodeError("issue_types and currencies must be JSON arrays")
+    if cfg.get("partial_variant", "partial") not in ("partial", "miss"):
+        raise EpisodeError("partial_variant must be 'partial' or 'miss'")
     if cfg["clean"]:
         issue_types: list[str] = []
         n_issues = 0
@@ -473,27 +482,31 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
     used_payments: set[str] = set()
     payment_id_set = {p["payment_id"] for p in payments}
     chosen = issue_types[:n_issues]
+    seq = 1                          # сквозная нумерация: issue_id обязана быть уникальна
     for kind in chosen:
         if kind == "duplicate_entry":
-            issue, mutation = _inject_duplicate(rng, ledger, invoices, fx, policy_day)
+            issue, mutation = _inject_duplicate(rng, ledger, invoices, fx, policy_day, seq)
         elif kind == "period_cutoff":
             issue, mutation = _inject_period_cutoff(rng, ledger, payments,
                                                     period_start, period_end, used_payments,
-                                                    fx, policy_day)
+                                                    fx, policy_day, seq)
             used_payments.update(x for x in issue["affected_ids"] if x in payment_id_set)
         elif kind == "partial_allocation":
             issue, mutation = _inject_partial_allocation(rng, ledger, payments,
                                                          period_start, period_end,
-                                                         used_payments, fx, policy_day, base)
+                                                         used_payments, fx, policy_day, base,
+                                                         seq,
+                                                         cfg.get("partial_variant", "partial"))
             used_payments.update(x for x in issue["affected_ids"] if x in payment_id_set)
         elif kind == "fx_rate":
             issue, mutation = _inject_fx_rate(rng, ledger, payments, used_payments,
-                                              fx, policy_day, base)
+                                              fx, policy_day, base, seq)
             used_payments.update(x for x in issue["affected_ids"] if x in payment_id_set)
         else:  # pragma: no cover - guarded above
             raise EpisodeError(f"issue type not implemented: {kind}")
         truth.append(issue)
         mutations.append(mutation)
+        seq += 1
 
     # ---- сценарии взаимодействия (спека: два обязательных) ---------------- #
     # clean=true главенствует: чистый эпизод остаётся пустым даже при заданных
@@ -503,14 +516,17 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
         if scen == "S1":
             issues, muts, pay_id = _inject_scenario_s1(rng, ledger, payments,
                                                         period_start, period_end,
-                                                        used_payments, fx, policy_day, base)
+                                                        used_payments, fx, policy_day, base,
+                                                        seq)
         else:
             issues, muts, pay_id = _inject_scenario_s2(rng, ledger, payments,
                                                         period_start, period_end,
-                                                        used_payments, fx, policy_day, base)
+                                                        used_payments, fx, policy_day, base,
+                                                        seq)
         used_payments.add(pay_id)
         truth.extend(issues)
         mutations.extend(muts)
+        seq += len(issues)
         for issue, mutation in zip(issues, muts):
             provenance_stages.append({"stage": "mutation", "issue_id": issue["issue_id"],
                                       "type": issue["type"], "scenario": scen,
@@ -586,7 +602,7 @@ def generate(seed: int, config: dict[str, Any] | None = None) -> dict[str, dict[
 # the four mutations (каждая несёт подписанные эффекты в базовой валюте)
 # --------------------------------------------------------------------------- #
 def _inject_duplicate(rng: random.Random, ledger: list[dict], invoices: list[dict],
-                      fx: FxTable, policy_day: date) -> tuple[dict, dict]:
+                      fx: FxTable, policy_day: date, seq: int) -> tuple[dict, dict]:
     """Копия кредитной строки выручки: Σдебет − Σкредит = −сумма (в базовой)."""
     candidates = [r for r in ledger if r["account"] == REVENUE and int(r["credit_minor"]) > 0]
     src = rng.choice(candidates)
@@ -594,11 +610,17 @@ def _inject_duplicate(rng: random.Random, ledger: list[dict], invoices: list[dic
     # (без подсказывающих слов вроде "dup" — иначе дубль читается по имени)
     stem = src["row_id"].rstrip("0123456789") or "row_"
     digits = src["row_id"][len(stem):]
-    dup = dict(src, row_id=f"{stem}{int(digits) + 5000:0{len(digits)}d}")
+    taken = {r["row_id"] for r in ledger}
+    offset = 5000
+    dup_id = f"{stem}{int(digits) + offset:0{len(digits)}d}"
+    while dup_id in taken:              # повторные инъекции одного типа не пересекаются
+        offset += 5000
+        dup_id = f"{stem}{int(digits) + offset:0{len(digits)}d}"
+    dup = dict(src, row_id=dup_id)
     ledger.append(dup)
     amount = int(dup["credit_minor"])
     amount_base = fx.convert(amount, dup["currency"], "USD", policy_day)
-    issue_id = "iss_duplicate_0001"
+    issue_id = f"iss_duplicate_{seq:04d}"
     issue = {
         "issue_id": issue_id,
         "type": "duplicate_entry",
@@ -634,7 +656,7 @@ def _inject_duplicate(rng: random.Random, ledger: list[dict], invoices: list[dic
 def _inject_period_cutoff(rng: random.Random, ledger: list[dict], payments: list[dict],
                           period_start: datetime, period_end: datetime,
                           exclude: set[str] | None, fx: FxTable,
-                          policy_day: date) -> tuple[dict, dict]:
+                          policy_day: date, seq: int) -> tuple[dict, dict]:
     """Строки платежа переезжают за period_end; документ остаётся с настоящей датой."""
     by_payment: dict[str, list[dict]] = {}
     for row in ledger:
@@ -660,7 +682,7 @@ def _inject_period_cutoff(rng: random.Random, ledger: list[dict], payments: list
     ar_row = next(r for r in rows if r["account"] == AR)
     amount = int(pay["amount_minor"])
     ar_base = fx.convert(int(ar_row["credit_minor"]), ar_row["currency"], "USD", policy_day)
-    issue_id = "iss_period_0001"
+    issue_id = f"iss_period_{seq:04d}"
     issue = {
         "issue_id": issue_id,
         "type": "period_cutoff",
@@ -697,8 +719,13 @@ def _inject_period_cutoff(rng: random.Random, ledger: list[dict], payments: list
 def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments: list[dict],
                                period_start: datetime, period_end: datetime,
                                exclude: set[str] | None, fx: FxTable,
-                               policy_day: date, base: str) -> tuple[dict, dict]:
-    """Документ платежа полон, обе строки журнала уменьшены на недостающую сумму."""
+                               policy_day: date, base: str,
+                               seq: int, variant: str = "partial") -> tuple[dict, dict]:
+    """Документ платежа полон, обе строки журнала уменьшены на недостающую сумму.
+
+    ``variant="miss"`` — распределение пропущено полностью (в журнале 0 из суммы
+    документа): вариант «пропуск» из определений проверок D09-D11.
+    """
     by_payment: dict[str, list[dict]] = {}
     for row in ledger:
         if row["payment_id"]:
@@ -728,7 +755,10 @@ def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments:
     pay, rows, cash_row, ar_row = eligible[rng.randrange(len(eligible))]
 
     total = int(pay["amount_minor"])
-    delta = min(max(1, total * rng.randrange(10, 45) // 100), total - 1)
+    if variant == "miss":
+        delta = total                     # распределение пропущено: в журнале 0
+    else:
+        delta = min(max(1, total * rng.randrange(10, 45) // 100), total - 1)
     ar_before = int(ar_row["credit_minor"])
     cash_before = int(cash_row["debit_minor"])
     cash_row["debit_minor"] = cash_before - delta
@@ -739,7 +769,7 @@ def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments:
     delta_base = (fx.convert(ar_before, pay["currency"], base, policy_day)
                   - fx.convert(int(ar_row["credit_minor"]), pay["currency"], base, policy_day))
 
-    issue_id = "iss_partial_0001"
+    issue_id = f"iss_partial_{seq:04d}"
     issue = {
         "issue_id": issue_id,
         "type": "partial_allocation",
@@ -774,7 +804,7 @@ def _inject_partial_allocation(rng: random.Random, ledger: list[dict], payments:
 
 def _inject_fx_rate(rng: random.Random, ledger: list[dict], payments: list[dict],
                     exclude: set[str] | None, fx: FxTable, policy_day: date,
-                    base: str) -> tuple[dict, dict]:
+                    base: str, seq: int) -> tuple[dict, dict]:
     """Конвертированная строка кросс-валютного платежа посчитана не по policy-курсу."""
     by_payment: dict[str, list[dict]] = {}
     for row in ledger:
@@ -820,7 +850,7 @@ def _inject_fx_rate(rng: random.Random, ledger: list[dict], payments: list[dict]
     cash_row = next(r for r in rows if r["account"] == CASH)
     policy_date = policy_day.isoformat()
     src, tgt = pay["currency"], base
-    issue_id = "iss_fx_0001"
+    issue_id = f"iss_fx_{seq:04d}"
     issue = {
         "issue_id": issue_id,
         "type": "fx_rate",
@@ -924,7 +954,8 @@ def _cutoff_issue(pay: dict, rows: list[dict], issue_id: str) -> dict:
 
 def _inject_scenario_s1(rng: random.Random, ledger: list[dict], payments: list[dict],
                         period_start: datetime, period_end: datetime, exclude: set[str] | None,
-                        fx: FxTable, policy_day: date, base: str) -> tuple[list, list, str]:
+                        fx: FxTable, policy_day: date, base: str,
+                        seq: int) -> tuple[list, list, str]:
     """S1 «курс + граница»: fx_rate (деньги) И period_cutoff (время) на одном платеже.
 
     Поля не пересекаются: fx меняет сумму AR-строки, cutoff — только метки времени.
@@ -943,7 +974,7 @@ def _inject_scenario_s1(rng: random.Random, ledger: list[dict], payments: list[d
     delta = wrong - correct
     ar["credit_minor"] = wrong
     fx_issue = {
-        "issue_id": "iss_s1_fx_0001",
+        "issue_id": f"iss_s1_fx_{seq:04d}",
         "type": "fx_rate",
         "affected_ids": sorted([pid, cash["row_id"], ar["row_id"]]),
         "expected_amount_minor": abs(delta),
@@ -975,7 +1006,7 @@ def _inject_scenario_s1(rng: random.Random, ledger: list[dict], payments: list[d
     new_ts = period_end + timedelta(days=1, hours=12)
     for row in rows:
         row["timestamp"] = _iso(new_ts)
-    cutoff_issue = _cutoff_issue(pay, rows, "iss_s1_cutoff_0001")
+    cutoff_issue = _cutoff_issue(pay, rows, f"iss_s1_cutoff_{seq + 1:04d}")
     ar_current = int(ar["credit_minor"])  # строка уже в базовой валюте
     cutoff_mut = {
         "issue_id": cutoff_issue["issue_id"], "type": "period_cutoff",
@@ -992,7 +1023,8 @@ def _inject_scenario_s1(rng: random.Random, ledger: list[dict], payments: list[d
 
 def _inject_scenario_s2(rng: random.Random, ledger: list[dict], payments: list[dict],
                         period_start: datetime, period_end: datetime, exclude: set[str] | None,
-                        fx: FxTable, policy_day: date, base: str) -> tuple[list, list, str]:
+                        fx: FxTable, policy_day: date, base: str,
+                        seq: int) -> tuple[list, list, str]:
     """S2 «частичный платёж в другой валюте на границе периода» (пример спеки):
     partial_allocation (деньги) И period_cutoff (время) на одном кросс-валютном платеже.
 
@@ -1012,7 +1044,7 @@ def _inject_scenario_s2(rng: random.Random, ledger: list[dict], payments: list[d
     cash["debit_minor"] = cash_base - delta
     ar["credit_minor"] = int(ar["credit_minor"]) - delta
     partial_issue = {
-        "issue_id": "iss_s2_partial_0001",
+        "issue_id": f"iss_s2_partial_{seq:04d}",
         "type": "partial_allocation",
         "affected_ids": sorted([pid, cash["row_id"], ar["row_id"]]),
         "expected_amount_minor": delta,
@@ -1041,7 +1073,7 @@ def _inject_scenario_s2(rng: random.Random, ledger: list[dict], payments: list[d
     new_ts = period_end + timedelta(days=1, hours=12)
     for row in rows:
         row["timestamp"] = _iso(new_ts)
-    cutoff_issue = _cutoff_issue(pay, rows, "iss_s2_cutoff_0001")
+    cutoff_issue = _cutoff_issue(pay, rows, f"iss_s2_cutoff_{seq + 1:04d}")
     ar_current = int(ar["credit_minor"])
     cutoff_mut = {
         "issue_id": cutoff_issue["issue_id"], "type": "period_cutoff",

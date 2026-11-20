@@ -1,0 +1,57 @@
+{
+  "episode_id": "ep_e12920ff9deb",
+  "issues": [
+    {
+      "issue_id": "iss_partial_0001",
+      "type": "partial_allocation",
+      "affected_ids": [
+        "PAY-2026-0513",
+        "ln_00722",
+        "ln_00723"
+      ],
+      "expected_amount_minor": 412103,
+      "currency": "EUR",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0513",
+          "ledger:ln_00723",
+          "invoice:INVC-2026-0051"
+        ],
+        [
+          "payment:PAY-2026-0513",
+          "ledger:ln_00722",
+          "ledger:ln_00723"
+        ]
+      ],
+      "statement": "платёж PAY-2026-0513 распределён в журнале на 732629 при документе на 1144732: недостаёт 412103"
+    },
+    {
+      "issue_id": "iss_fx_0002",
+      "type": "fx_rate",
+      "affected_ids": [
+        "PAY-2026-0466",
+        "ln_00618",
+        "ln_00619"
+      ],
+      "expected_amount_minor": 97,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0466",
+          "ledger:ln_00619",
+          "fx:2026-03-31:KZT:USD",
+          "policy:fx_rate_date"
+        ],
+        [
+          "payment:PAY-2026-0466",
+          "ledger:ln_00618",
+          "ledger:ln_00619",
+          "policy:fx_rate_date"
+        ]
+      ],
+      "statement": "платёж PAY-2026-0466 (KZT) конвертирован по курсу на 2026-01-15 вместо policy-даты 2026-03-31: расхождение 97 USD"
+    }
+  ]
+}

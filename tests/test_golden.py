@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from audit_env import episode_fingerprint  # noqa: E402
 
 GOLDEN_SEED = 42
-GOLDEN_HASH = "05eb2eb1446aba20cd205dcbee41f174e7021bee99389d25636809d975d1ebf8"
+GOLDEN_HASH = "b8c7cec2f06664b0f6b5b6617cf6b5c45d332814c65b0f1955b598afd181bf91"
 
 
 class TestGoldenFingerprint(unittest.TestCase):

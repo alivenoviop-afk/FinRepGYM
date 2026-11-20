@@ -180,6 +180,10 @@ class AuditEnv:
             raise ContractViolation(f"episode is missing open files: {missing}")
 
         self._manifest = json.loads(open_files["manifest.json"])
+        # Манифест обязан отражать лимиты ИМЕННО этого экземпляра среды
+        # (иначе агент, опираясь на открытый манифест, видит ложные 50/100).
+        self._manifest["page_limit"] = self.page_limit
+        self._manifest["max_steps"] = self.max_steps
         self._policy = json.loads(open_files["policy.json"])
         self._episode_id = self._manifest["episode_id"]
         self._tables = {
@@ -204,6 +208,21 @@ class AuditEnv:
         self._documents = {r["doc_id"]: {"kind": "invoice", **r} for r in self._tables["invoices"]}
         self._documents.update({r["doc_id"]: {"kind": "payment", **r}
                                 for r in self._tables["payments"]})
+
+        # Допустимые evidence_id (документированные префиксы, SCHEMAS §3):
+        # находка со ссылкой на несуществующий id не сопоставляется (M04).
+        self._valid_evidence_ids: set[str] = set()
+        for row in self._tables["ledger"]:
+            self._valid_evidence_ids.add(f"ledger:{row['row_id']}")
+        for row in self._tables["invoices"]:
+            self._valid_evidence_ids.add(f"invoice:{row['invoice_id']}")
+        for row in self._tables["payments"]:
+            self._valid_evidence_ids.add(f"payment:{row['payment_id']}")
+        for row in self._tables["fx"]:
+            self._valid_evidence_ids.add(
+                f"fx:{row['date']}:{row['source_currency']}:{row['target_currency']}")
+        self._valid_evidence_ids.update(
+            {f"policy:{key}" for key in self._policy} | {"policy:period", "policy:fx_rate_date"})
 
         closed = files.get("closed") or {}
         if "truth.json" not in closed:
@@ -236,7 +255,13 @@ class AuditEnv:
         if not self._ready:
             raise ContractViolation("call reset() before step()")
         if self._finished:
-            raise ContractViolation("episode already finished; call reset()")
+            # Спека C15/C17: шаг после завершения НЕ меняет findings/метрики/награду
+            # и не роняет процесс — возвращаем ограниченную ошибку, бюджет не трогаем.
+            return ({"error": {"code": "episode_finished",
+                               "message": "episode already finished; call reset()"},
+                     "steps_left": 0},
+                    0.0, True, False,
+                    {"mode": self.mode, "steps_used": self._steps})
         self._steps += 1
         steps_left = max(0, self.max_steps - self._steps)
 
@@ -284,17 +309,23 @@ class AuditEnv:
             self._eval_log.append({"event": "submit_invalid", "code": code,
                                    "steps_used": self._steps})
             self._last_metrics = None
-            self._last_reward = -1.0 if self.mode == "train" else 0.0
+            # Истинная награда битой отправки всегда -1 (в том числе в eval):
+            # иначе агенту выгоднее сломать отправку, чем честно ответить.
+            self._last_reward = -1.0
             observation = {"error": {"code": "submit_invalid", "message": "submit rejected: invalid structure"},
                            "steps_left": steps_left}
             # Spec: malformed submission terminates with reward -1 (logged on the evaluator side).
             return observation, True, (-1.0 if self.mode == "train" else 0.0)
 
-        metrics = compute_metrics(self._truth, payload["findings"])
-        reward = terminal_reward(metrics["f1"], self._steps)
+        metrics = compute_metrics(self._truth, payload["findings"],
+                                  self._valid_evidence_ids)
+        # Спека (определения 20.11): submit входит в лимит 100 действий, но НЕ
+        # входит в inspection_steps — награда считается по шагам ДО submit.
+        reward = terminal_reward(metrics["f1"], max(0, self._steps - 1))
         self._last_metrics = metrics
         self._last_reward = reward
         self._eval_log.append({"event": "submit_accepted", "steps_used": self._steps,
+                               "inspection_steps": max(0, self._steps - 1),
                                "n_findings": len(payload["findings"])})
         observation = {"result": {"accepted": True, "findings_count": len(payload["findings"])},
                        "steps_left": steps_left}
@@ -302,7 +333,7 @@ class AuditEnv:
 
     def _finalise_empty(self) -> float:
         """Terminal value for a truncated episode (empty final answer)."""
-        metrics = compute_metrics(self._truth, [])
+        metrics = compute_metrics(self._truth, [], self._valid_evidence_ids)
         self._last_metrics = metrics
         if self.truncation_reward == "zero":
             reward = 0.0

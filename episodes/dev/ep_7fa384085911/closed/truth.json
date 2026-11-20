@@ -1,0 +1,55 @@
+{
+  "episode_id": "ep_7fa384085911",
+  "issues": [
+    {
+      "issue_id": "iss_duplicate_0001",
+      "type": "duplicate_entry",
+      "affected_ids": [
+        "row_00714",
+        "row_05714"
+      ],
+      "expected_amount_minor": 737700,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "ledger:row_05714",
+          "ledger:row_00714",
+          "invoice:BILL-2026-0066"
+        ],
+        [
+          "ledger:row_05714",
+          "ledger:row_00714"
+        ]
+      ],
+      "statement": "строка выручки продублирована: две идентичные записи на одну счёт-фактуру, равенство дебет=кредит нарушено на сумму строки"
+    },
+    {
+      "issue_id": "iss_fx_0002",
+      "type": "fx_rate",
+      "affected_ids": [
+        "PAY-2026-0649",
+        "row_00887",
+        "row_00888"
+      ],
+      "expected_amount_minor": 104,
+      "currency": "USD",
+      "amount_tolerance_minor": 0,
+      "evidence_sets": [
+        [
+          "payment:PAY-2026-0649",
+          "ledger:row_00888",
+          "fx:2026-03-31:KZT:USD",
+          "policy:fx_rate_date"
+        ],
+        [
+          "payment:PAY-2026-0649",
+          "ledger:row_00887",
+          "ledger:row_00888",
+          "policy:fx_rate_date"
+        ]
+      ],
+      "statement": "платёж PAY-2026-0649 (KZT) конвертирован по курсу на 2026-02-26 вместо policy-даты 2026-03-31: расхождение 104 USD"
+    }
+  ]
+}

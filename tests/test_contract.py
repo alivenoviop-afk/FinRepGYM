@@ -129,15 +129,29 @@ class TestActions(unittest.TestCase):
         report = env.evaluator_report()
         self.assertEqual(report["metrics"]["n_findings"], 0, "пустой итоговый ответ")
         self.assertEqual(report["log"][-1]["event"], "truncated")
-        with self.assertRaises(ContractViolation):
-            env.step({"action": "list_records", "table": "ledger", "cursor": 0, "limit": 1})
+        # после завершения шаг не роняет среду и не меняет итог
+        obs2, reward2, term2, trunc2, _ = env.step(
+            {"action": "list_records", "table": "ledger", "cursor": 0, "limit": 1})
+        self.assertEqual(obs2["error"]["code"], "episode_finished")
+        self.assertTrue(term2 and not trunc2)
+        self.assertEqual(reward2, 0.0)
 
     def test_submit_terminates_and_step_afterwards_is_rejected(self):
         obs, *_ = self._step({"action": "submit", "episode_id": obs_episode(self.env),
                               "findings": []})
         self.assertTrue(obs.get("result", {}).get("accepted"))
-        with self.assertRaises(ContractViolation):
-            self._step({"action": "list_records", "table": "ledger", "cursor": 0, "limit": 1})
+        before = self.env.evaluator_report()
+        obs2, reward2, term2, trunc2, info2 = self._step(
+            {"action": "list_records", "table": "ledger", "cursor": 0, "limit": 1})
+        # Определения 20.11 (C15): последующие действия не меняют findings,
+        # метрики и награду; процесс среды не падает.
+        self.assertEqual(obs2["error"]["code"], "episode_finished")
+        self.assertTrue(term2 and not trunc2)
+        self.assertEqual(reward2, 0.0)
+        after = self.env.evaluator_report()
+        self.assertEqual(before["metrics"], after["metrics"])
+        self.assertEqual(before["true_reward"], after["true_reward"])
+        self.assertEqual(before["steps_used"], after["steps_used"])
 
     def test_malformed_submit_terminates_with_minus_one(self):
         obs, reward, terminated, _, info = self._step({"action": "submit",

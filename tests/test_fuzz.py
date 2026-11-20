@@ -92,9 +92,12 @@ class TestFuzz(unittest.TestCase):
                 break
         self.assertTrue(finished, "эпизод обязан завершиться (submit или лимит шагов)")
         self.assertLessEqual(steps, 101, "бюджет шагов не может быть превышен")
-        # после завершения любой шаг — ограниченная ошибка контракта
-        with self.assertRaises(ContractViolation):
-            env.step({"action": "list_records", "table": "ledger", "cursor": 0, "limit": 1})
+        # после завершения любой шаг — ограниченная ошибка, среда не падает (C15/C17)
+        obs, reward, terminated, truncated, _ = env.step(
+            {"action": "list_records", "table": "ledger", "cursor": 0, "limit": 1})
+        self.assertEqual(obs["error"]["code"], "episode_finished")
+        self.assertTrue(terminated and not truncated)
+        self.assertEqual(reward, 0.0)
 
     def test_hostile_queries_return_limited_json_errors(self):
         env = AuditEnv()

@@ -1,0 +1,142 @@
+{
+  "generator": "FinRepGYM",
+  "schema_version": "finrepgym/1.0",
+  "seed": 2009,
+  "config": {
+    "n_invoices": 60,
+    "base_currency": "USD",
+    "currencies": [
+      "USD",
+      "EUR",
+      "KZT"
+    ],
+    "minor_unit_digits": 2,
+    "timezone": "Asia/Almaty",
+    "utc_offset": "+05:00",
+    "period_start": "2026-01-01",
+    "period_end": "2026-03-31",
+    "issue_types": [],
+    "n_issues": 0,
+    "scenarios": [
+      "S1"
+    ],
+    "partial_variant": "partial",
+    "clean": false,
+    "distractors": true
+  },
+  "episode_id": "ep_c5b00e6fcf6a",
+  "stages": [
+    {
+      "stage": "history",
+      "detail": "balanced books verified in base currency",
+      "invariants": {
+        "sum_debits": 232968217,
+        "sum_credits": 232968217,
+        "books_balanced": true,
+        "ar_balance_in_period": 40306497,
+        "invoiced_in_period": 134324984,
+        "paid_in_period": 94018487,
+        "ar_matches_documents": true,
+        "base_currency": "USD"
+      }
+    },
+    {
+      "stage": "mutation",
+      "issue_id": "iss_s1_fx_0001",
+      "type": "fx_rate",
+      "scenario": "S1",
+      "causal_change": "scenario S1: AR row rec_00437 of payment PAY-2026-0272 recomputed with rate of 2026-01-29 instead of policy date 2026-03-31"
+    },
+    {
+      "stage": "mutation",
+      "issue_id": "iss_s1_cutoff_0002",
+      "type": "period_cutoff",
+      "scenario": "S1",
+      "causal_change": "scenario S1: rows of payment PAY-2026-0272 re-dated from 2026-03-31T20:59:59+05:00 to 2026-04-02T11:59:59+05:00; document unchanged"
+    },
+    {
+      "stage": "verify",
+      "invariants_after": {
+        "sum_debits": 232968217,
+        "sum_credits": 232968267,
+        "books_balanced": false,
+        "ar_balance_in_period": 40308131,
+        "invoiced_in_period": 134324984,
+        "paid_in_period": 94018487,
+        "ar_matches_documents": false,
+        "base_currency": "USD"
+      },
+      "declared_discrepancies": {
+        "books_imbalance": -50,
+        "declared_imbalance": -50,
+        "ar_period_discrepancy": 1634,
+        "declared_ar_discrepancy": 1634,
+        "verified": true
+      }
+    }
+  ],
+  "mutations": [
+    {
+      "issue_id": "iss_s1_fx_0001",
+      "type": "fx_rate",
+      "causal_change": "scenario S1: AR row rec_00437 of payment PAY-2026-0272 recomputed with rate of 2026-01-29 instead of policy date 2026-03-31",
+      "before": {
+        "ar_credit_minor": 1634,
+        "rate_date": "2026-03-31"
+      },
+      "after": {
+        "ar_credit_minor": 1684,
+        "rate_date": "2026-01-29"
+      },
+      "expected_amount_minor": 50,
+      "currency": "USD",
+      "effect_imbalance": -50,
+      "effect_ar_diff": -50,
+      "affected_ids": [
+        "PAY-2026-0272",
+        "rec_00436",
+        "rec_00437"
+      ]
+    },
+    {
+      "issue_id": "iss_s1_cutoff_0002",
+      "type": "period_cutoff",
+      "causal_change": "scenario S1: rows of payment PAY-2026-0272 re-dated from 2026-03-31T20:59:59+05:00 to 2026-04-02T11:59:59+05:00; document unchanged",
+      "before": {
+        "rows_timestamp": "2026-03-31T20:59:59+05:00"
+      },
+      "after": {
+        "rows_timestamp": "2026-04-02T11:59:59+05:00"
+      },
+      "expected_amount_minor": 872357,
+      "currency": "KZT",
+      "effect_imbalance": 0,
+      "effect_ar_diff": 1684,
+      "affected_ids": [
+        "PAY-2026-0272",
+        "rec_00436",
+        "rec_00437"
+      ]
+    }
+  ],
+  "invariants_before": {
+    "sum_debits": 232968217,
+    "sum_credits": 232968217,
+    "books_balanced": true,
+    "ar_balance_in_period": 40306497,
+    "invoiced_in_period": 134324984,
+    "paid_in_period": 94018487,
+    "ar_matches_documents": true,
+    "base_currency": "USD"
+  },
+  "invariants_after": {
+    "sum_debits": 232968217,
+    "sum_credits": 232968267,
+    "books_balanced": false,
+    "ar_balance_in_period": 40308131,
+    "invoiced_in_period": 134324984,
+    "paid_in_period": 94018487,
+    "ar_matches_documents": false,
+    "base_currency": "USD"
+  }
+}
