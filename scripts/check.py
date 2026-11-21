@@ -11,6 +11,11 @@
   6. Детерминизм: повтор seed+config даёт байт-в-байт те же файлы.
   7. Утечки: в траекториях нет закрытого эталона.
   8. Размеры и форматы: эпизод в границах спеки.
+  9. Часовые пояса, лимит времени и размеры (спека 07).
+ 10. Репетиция протокола жюри через judge_adapter: обе ветки reset,
+     пагинация, калькулятор, ошибки, submit, score_episode, лимит времени.
+ 11. Четыре политики через канонический протокол на свежих seed
+     + независимый пересчёт эталона оценщиком (определения 20.11).
 
 Выход: таблица PASS/FAIL и итог; код выхода 0 только при полном успехе.
 """
@@ -254,6 +259,34 @@ def main() -> int:
                       if f.is_file() and ".git" not in f.parts and "__pycache__" not in f.parts)
     check("размер решения < 1 ГБ (спека 07)", total_bytes < 1024 ** 3,
           f"{total_bytes / (1024 * 1024):.1f} МБ (лимит 1024 МБ)")
+
+    # 10. репетиция протокола оценщика (определения 20.11) ----------------- #
+    print("\n10) Протокол оценщика judge_adapter — репетиция «как жюри»")
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import jury_protocol as jp
+
+    tmp_adapter = Path(tempfile.mkdtemp(prefix="check_adapter_"))
+    try:
+        proto_problems = jp.rehearse_protocol(tmp_adapter)
+    finally:
+        shutil.rmtree(tmp_adapter, ignore_errors=True)
+    check("генерация, обе ветки reset, пагинация, калькулятор, ошибки, "
+          "submit, score_episode, детерминированный лимит времени",
+          not proto_problems, "; ".join(proto_problems[:3]))
+
+    # 11. четыре политики через канонический протокол ----------------------- #
+    print("\n11) Четыре политики через канонический протокол (свежие seed)")
+    tmp_policies = Path(tempfile.mkdtemp(prefix="check_policies_"))
+    try:
+        pol_problems, pol_stats = jp.rehearse_policies(tmp_policies, 20)
+    finally:
+        shutil.rmtree(tmp_policies, ignore_errors=True)
+    check("оракул и сверка F1=1.0, атаки F1=0 и return=-1, "
+          "независимый пересчёт 20/20",
+          not pol_problems,
+          (f"эпизодов {pol_stats['episodes']}, прогонов {pol_stats['runs']}, "
+           f"F1=1.0: {pol_stats['perfect']}" if not pol_problems
+           else "; ".join(pol_problems[:3])))
 
     # итог ------------------------------------------------------------------- #
     passed = sum(1 for ok, _ in RESULTS if ok)
