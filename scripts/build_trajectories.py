@@ -5,7 +5,7 @@
 
 Результат:
   * trajectories.jsonl    — записи вида {episode_id, policy, step, action,
-                            observation, reward, terminated, truncated}
+                            observation, reward, terminated, truncated, info}
                             (наблюдения без закрытого эталона — проверяется сканером);
   * artifacts/diagnostics.csv — сырые метрики каждого прогона;
   * artifacts/diagnostics_by_type.csv — те же метрики в разбивке по 4 типам ошибок;

@@ -46,6 +46,7 @@ def run_episode(env: AuditEnv, policy: Policy, seed: int,
         "reward": 0.0,
         "terminated": False,
         "truncated": False,
+        "info": info,
     }]
     step = 0
     terminated = truncated = False
@@ -61,6 +62,7 @@ def run_episode(env: AuditEnv, policy: Policy, seed: int,
             "reward": reward,
             "terminated": terminated,
             "truncated": truncated,
+            "info": info,
         })
         if step >= env.max_steps:
             break
