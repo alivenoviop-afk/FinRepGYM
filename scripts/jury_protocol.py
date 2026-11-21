@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Репетиция закрытой проверки жюри — полный прогон «как жюри».
+"""Полный прогон протокола оценки через judge_adapter.
 
     python scripts/jury_protocol.py               # полный прогон (20 эпизодов)
     python scripts/jury_protocol.py --episodes 5  # быстрая проверка
@@ -362,7 +362,7 @@ def main() -> int:
     tmp = Path(tempfile.mkdtemp(prefix="jury_protocol_"))
     try:
         print("=" * 70)
-        print("  РЕПЕТИЦИЯ ЗАКРЫТОЙ ПРОВЕРКИ ЖЮРИ — прогон через judge_adapter")
+        print("  ПОЛНЫЙ ПРОГОН ПРОТОКОЛА ОЦЕНКИ — через judge_adapter")
         print("=" * 70)
 
         print("\n1) Протокол адаптера: генерация, обе ветки reset, пагинация,")
@@ -390,7 +390,7 @@ def main() -> int:
             print(f"ИТОГ: {len(problems)} проблем — см. строки [X] выше")
             print("=" * 70)
             return 1
-        print("ИТОГ: репетиция закрытой проверки пройдена полностью")
+        print("ИТОГ: полный прогон протокола пройден")
         print("=" * 70)
         return 0
     finally:

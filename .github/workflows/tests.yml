@@ -40,7 +40,7 @@ jobs:
       - name: Единая команда проверки
         run: python scripts/check.py
 
-      - name: Репетиция закрытой проверки «как жюри» (judge_adapter)
+      - name: Протокол judge_adapter - генерация, reset, score, лимит времени
         run: python scripts/jury_protocol.py
 
       # Репетиция протокола регламента: 20 эпизодов (5/5/5/5) x 4 политики

@@ -18,12 +18,12 @@
 ## Запуск одной командой
 
 ```bash
-python scripts/demo_all.py              # ДЕМО ДЛЯ ЖЮРИ: весь прогон с репликами (~40 с)
+python scripts/demo_all.py              # демо: весь прогон с репликами (~40 с)
 python scripts/demo_all.py --srt demo.srt   # то же + субтитры с реальными таймингами
 python scripts/build_episodes.py        # 10 train + 10 dev эпизодов + реестр
 python scripts/build_trajectories.py    # trajectories.jsonl + docs/DIAGNOSTICS.md
-python scripts/check.py                 # единая проверка жюри: 34/34
-python scripts/jury_protocol.py         # репетиция закрытой проверки «как жюри»
+python scripts/check.py                 # единая проверка: 34/34
+python scripts/jury_protocol.py         # полный прогон протокола оценки
 python scripts/spec_audit.py            # параметрический аудит ТЗ: 100/100 (по разделам)
 python scripts/jury_conditions.py       # слепая проверка на условиях оценщиков: 9/9
 python scripts/jury_marathon.py        # 10 оценок жюри ПОДРЯД (200 эпизодов, 2 ядра): 10/10
@@ -41,7 +41,7 @@ python scripts/benchmark.py             # измеренные запасы до
 точные числа формулы блока 3 (включая 47/150 и −871/1050) и 20 парных проверок
 с раскладкой 5/5/10. Прогоняются обычным `unittest` и входят в CI.
 
-**Репетиция «как жюри»:** `python scripts/jury_protocol.py` (и отдельными
+**Полный прогон протокола оценки:** `python scripts/jury_protocol.py` (и отдельными
 пунктами 10–11 внутри `check.py`) прогоняет весь официальный протокол через
 `judge_adapter`: обе ветки reset, конверт действий, пагинацию, калькулятор,
 ограниченные ошибки, submit, `score_episode` (валидный и структурно
@@ -60,7 +60,7 @@ python scripts/benchmark.py             # измеренные запасы до
 ```bash
 docker build -t finrepgym .                                     # сборка (сеть нужна 1 раз — для базового образа)
 docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 194 теста + 34/34
-docker run --rm finrepgym python scripts/demo_all.py --fast     # демо для жюри
+docker run --rm finrepgym python scripts/demo_all.py --fast     # демо
 docker run --rm finrepgym python scripts/demo.py --policy oracle # одна политика
 ```
 
@@ -136,9 +136,9 @@ FinRepGYM/
 │   ├── spec_audit.py            # параметрический аудит ТЗ (100/100)
 │   ├── jury_conditions.py       # слепая проверка на условиях оценщиков (9/9)
 │   ├── jury_marathon.py         # оценки жюри подряд на свежих seed (10/10)
-│   ├── jury_protocol.py         # репетиция протокола жюри через judge_adapter
+│   ├── jury_protocol.py         # полный прогон протокола через judge_adapter
 │   ├── organizer_check.py       # репетиция закрытой проверки (20 эпизодов x 4 политики)
-│   ├── demo_all.py              # ДЕМО ДЛЯ ЖЮРИ: 6 шагов с репликами
+│   ├── demo_all.py              # демо: 6 шагов с репликами
 │   ├── demo.py                  # показ работы среды
 │   ├── golden_hash.py           # отпечаток seed=42 (кросс-платформенный контроль)
 │   └── benchmark.py             # измеренные запасы до лимитов регламента
