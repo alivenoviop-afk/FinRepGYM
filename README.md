@@ -8,7 +8,7 @@
 > сценарии взаимодействия S1/S2, возвраты, воспроизводимость и обобщение (парные проверки),
 > matcher, награда, 4 политики, **10 train + 10 dev эпизодов, траектории 3 «агентских»
 > политик (оракул — у оценщика), диагностика P/R/F1/возврат/шаги/время,
-> точка входа оценщика `judge_adapter.py`**. **194 теста, `check.py` 34/34,
+> точка входа оценщика `judge_adapter.py`**. **206 тестов, `check.py` 34/34,
 > репетиция закрытой проверки 20×4 (`organizer_check.py`), 20 парных проверок.**
 > Готово: контейнер, записка, демо-скрипт; остаётся запись видео и защита (22.11).
 
@@ -29,7 +29,7 @@ python scripts/jury_conditions.py       # слепая проверка на у�
 python scripts/jury_marathon.py        # 10 оценок жюри ПОДРЯД (200 эпизодов, 2 ядра): 10/10
 python scripts/organizer_check.py       # репетиция закрытой проверки: 20 эпизодов x 4 политики
 python scripts/demo.py                  # демо скриптовой политики
-python -m unittest discover -s tests -v # 194 теста
+python -m unittest discover -s tests -v # 206 тестов
 python judge_adapter.py                 # самопроверка точки входа оценщика
 python scripts/golden_hash.py           # отпечаток seed=42: байт-в-байт на любой ОС
 python scripts/benchmark.py             # измеренные запасы до лимитов (время, память, шаги)
@@ -59,7 +59,7 @@ python scripts/benchmark.py             # измеренные запасы до
 
 ```bash
 docker build -t finrepgym .                                     # сборка (сеть нужна 1 раз — для базового образа)
-docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 194 теста + 34/34
+docker run --rm finrepgym                                       # ЕДИНАЯ ПРОВЕРКА: 206 тестов + 34/34
 docker run --rm finrepgym python scripts/demo_all.py --fast     # демо
 docker run --rm finrepgym python scripts/demo.py --policy oracle # одна политика
 ```
@@ -154,7 +154,7 @@ FinRepGYM/
 │                                #   demo.srt, jury_*.md, organizer_*, spec_audit.txt
 ├── docs/                        # DESIGN_NOTE, SCHEMAS, SELF_REPORT, PRESENTATION_BRIEF, ARCHITECTURE,
 │                                #   RULES, DIAGNOSTICS, SUMMARY, JURY_FAQ, VIDEO_SCRIPT
-└── tests/                       # 194 теста
+└── tests/                       # 206 тестов
 ```
 
 ## Эпизоды, траектории и диагностика
